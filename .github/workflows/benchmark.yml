@@ -1,0 +1,223 @@
+name: Docker Build Benchmark
+
+on:
+  workflow_dispatch:
+
+env:
+  BORINGCACHE_API_TOKEN: ${{ secrets.BORINGCACHE_API_TOKEN }}
+  BUILDX_CACHE_DIR: /tmp/.buildx-cache
+  RESULTS_DIR: benchmark-results
+
+jobs:
+  # Baseline: Manual buildx with actions/cache
+  docker-actions-cache:
+    name: "Baseline: actions/cache"
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        run: [1, 2, 3]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: boringcache/action
+          path: boringcache-action
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Cache Docker layers (actions/cache)
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.BUILDX_CACHE_DIR }}
+          key: docker-benchmark-${{ runner.os }}-${{ hashFiles('boringcache-action/examples/rails_app/Dockerfile') }}
+          restore-keys: docker-benchmark-${{ runner.os }}-
+
+      - name: Build Docker image
+        run: |
+          cd boringcache-action/examples/rails_app
+          START_TIME=$(date +%s%N)
+          docker buildx build \
+            --cache-from=type=local,src=${{ env.BUILDX_CACHE_DIR }} \
+            --cache-to=type=local,dest=${{ env.BUILDX_CACHE_DIR }},mode=max \
+            --load \
+            -t rails-app:latest .
+          END_TIME=$(date +%s%N)
+          DURATION=$(( (END_TIME - START_TIME) / 1000000 ))
+          echo "actions/cache docker build - Run ${{ matrix.run }}: ${DURATION}ms"
+          mkdir -p "$GITHUB_WORKSPACE/${{ env.RESULTS_DIR }}"
+          echo "${DURATION}" > "$GITHUB_WORKSPACE/${{ env.RESULTS_DIR }}/actions-cache-run${{ matrix.run }}.txt"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: actions-cache-results-${{ matrix.run }}
+          path: ${{ env.RESULTS_DIR }}/
+
+  # Test: boringcache/docker action
+  docker-boringcache:
+    name: "Test: boringcache/docker"
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        run: [1, 2, 3]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/checkout@v4
+        with:
+          repository: boringcache/action
+          path: boringcache-action
+
+      - name: Build with boringcache/docker
+        id: build
+        uses: ./
+        with:
+          workspace: boringcache/actions
+          image: rails-app-benchmark
+          context: boringcache-action/examples/rails_app
+          cache-tag: docker-benchmark-${{ matrix.run }}
+
+      - name: Measure build time
+        run: |
+          cd boringcache-action/examples/rails_app
+          START_TIME=$(date +%s%N)
+          docker buildx build \
+            --cache-from=type=local,src=/tmp/buildkit-cache \
+            --cache-to=type=local,dest=/tmp/buildkit-cache,mode=max \
+            --load \
+            -t rails-app-boring:latest .
+          END_TIME=$(date +%s%N)
+          DURATION=$(( (END_TIME - START_TIME) / 1000000 ))
+          echo "boringcache/docker build - Run ${{ matrix.run }}: ${DURATION}ms"
+          mkdir -p "$GITHUB_WORKSPACE/${{ env.RESULTS_DIR }}"
+          echo "${DURATION}" > "$GITHUB_WORKSPACE/${{ env.RESULTS_DIR }}/boringcache-run${{ matrix.run }}.txt"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: boringcache-results-${{ matrix.run }}
+          path: ${{ env.RESULTS_DIR }}/
+
+  # Test: boringcache/docker sub-actions (restore + manual build + save)
+  docker-boringcache-subactions:
+    name: "Test: boringcache/docker sub-actions"
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        run: [1, 2, 3]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/checkout@v4
+        with:
+          repository: boringcache/action
+          path: boringcache-action
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Restore cache (sub-action)
+        id: restore
+        uses: ./restore
+        with:
+          workspace: boringcache/actions
+          cache-tag: docker-subactions-${{ matrix.run }}
+
+      - name: Build Docker image (manual)
+        run: |
+          cd boringcache-action/examples/rails_app
+          START_TIME=$(date +%s%N)
+          docker buildx build \
+            --cache-from=type=local,src=${{ steps.restore.outputs.cache-dir }} \
+            --cache-to=type=local,dest=${{ steps.restore.outputs.cache-dir }},mode=max \
+            --load \
+            -t rails-app-subactions:latest .
+          END_TIME=$(date +%s%N)
+          DURATION=$(( (END_TIME - START_TIME) / 1000000 ))
+          echo "boringcache sub-actions docker build - Run ${{ matrix.run }}: ${DURATION}ms"
+          mkdir -p "$GITHUB_WORKSPACE/${{ env.RESULTS_DIR }}"
+          echo "${DURATION}" > "$GITHUB_WORKSPACE/${{ env.RESULTS_DIR }}/subactions-run${{ matrix.run }}.txt"
+
+      - name: Save cache (sub-action)
+        uses: ./save
+        with:
+          workspace: boringcache/actions
+          cache-tag: ${{ steps.restore.outputs.cache-tag }}
+          cache-dir: ${{ steps.restore.outputs.cache-dir }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: subactions-results-${{ matrix.run }}
+          path: ${{ env.RESULTS_DIR }}/
+
+  benchmark-summary:
+    name: Generate Summary
+    runs-on: ubuntu-latest
+    needs: [docker-actions-cache, docker-boringcache, docker-boringcache-subactions]
+    if: always()
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: "*-results-*"
+          merge-multiple: true
+
+      - name: Generate summary
+        run: |
+          echo "# Docker Build Benchmark Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Build Times (Rails app Dockerfile)" >> $GITHUB_STEP_SUMMARY
+          echo "| Run | actions/cache | boringcache (combined) | boringcache (sub-actions) |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----|---------------|------------------------|---------------------------|" >> $GITHUB_STEP_SUMMARY
+
+          for run in 1 2 3; do
+            a="N/A"
+            b="N/A"
+            s="N/A"
+            [[ -f "actions-cache-run${run}.txt" ]] && a=$(cat "actions-cache-run${run}.txt")
+            [[ -f "boringcache-run${run}.txt" ]] && b=$(cat "boringcache-run${run}.txt")
+            [[ -f "subactions-run${run}.txt" ]] && s=$(cat "subactions-run${run}.txt")
+            echo "| $run | ${a}ms | ${b}ms | ${s}ms |" >> $GITHUB_STEP_SUMMARY
+          done
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Summary" >> $GITHUB_STEP_SUMMARY
+
+          # Calculate averages
+          aa=0; bb=0; ss=0
+          ac=0; bc=0; sc=0
+          for run in 1 2 3; do
+            if [[ -f "actions-cache-run${run}.txt" ]]; then
+              aa=$((aa + $(cat "actions-cache-run${run}.txt")))
+              ac=$((ac + 1))
+            fi
+            if [[ -f "boringcache-run${run}.txt" ]]; then
+              bb=$((bb + $(cat "boringcache-run${run}.txt")))
+              bc=$((bc + 1))
+            fi
+            if [[ -f "subactions-run${run}.txt" ]]; then
+              ss=$((ss + $(cat "subactions-run${run}.txt")))
+              sc=$((sc + 1))
+            fi
+          done
+
+          if [[ $ac -gt 0 ]]; then
+            aa=$((aa / ac))
+            echo "- **actions/cache average**: ${aa}ms" >> $GITHUB_STEP_SUMMARY
+          fi
+          if [[ $bc -gt 0 ]]; then
+            bb=$((bb / bc))
+            echo "- **boringcache (combined) average**: ${bb}ms" >> $GITHUB_STEP_SUMMARY
+          fi
+          if [[ $sc -gt 0 ]]; then
+            ss=$((ss / sc))
+            echo "- **boringcache (sub-actions) average**: ${ss}ms" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Comparison" >> $GITHUB_STEP_SUMMARY
+          if [[ $ac -gt 0 && $bc -gt 0 && $bb -gt 0 ]]; then
+            imp=$(echo "scale=2; $aa / $bb" | bc -l)
+            echo "- **Combined vs actions/cache**: ${imp}x faster" >> $GITHUB_STEP_SUMMARY
+          fi
+          if [[ $ac -gt 0 && $sc -gt 0 && $ss -gt 0 ]]; then
+            imp=$(echo "scale=2; $aa / $ss" | bc -l)
+            echo "- **Sub-actions vs actions/cache**: ${imp}x faster" >> $GITHUB_STEP_SUMMARY
+          fi

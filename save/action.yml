@@ -1,0 +1,33 @@
+name: 'BoringCache Docker Save'
+description: 'Cache once. Reuse everywhere. Save Docker BuildKit cache to BoringCache.'
+author: 'BoringCache'
+
+inputs:
+  workspace:
+    description: 'BoringCache workspace identifier (e.g., my-org/my-project). Can be omitted if restore action was used.'
+    required: false
+    default: ''
+  cache-tag:
+    description: 'Cache tag for BoringCache. Can be omitted if restore action was used.'
+    required: false
+    default: ''
+  image:
+    description: 'Image name for default cache tag generation (used if cache-tag not set)'
+    required: false
+    default: ''
+  cache-dir:
+    description: 'Local directory containing BuildKit cache. Can be omitted if restore action was used.'
+    required: false
+    default: ''
+  cli-version:
+    description: 'BoringCache CLI version to install'
+    required: false
+    default: ''
+
+runs:
+  using: 'node24'
+  main: dist/index.js
+
+branding:
+  icon: 'upload'
+  color: 'blue'

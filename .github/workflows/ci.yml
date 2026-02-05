@@ -1,0 +1,139 @@
+name: Docker Action CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "action.yml"
+      - ".github/workflows/**"
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  BORINGCACHE_API_TOKEN: ${{ secrets.BORINGCACHE_API_TOKEN }}
+
+jobs:
+  test-basic-build:
+    name: Test Basic Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create test Dockerfile
+        run: |
+          mkdir -p test-app
+          cat > test-app/Dockerfile << 'EOF'
+          FROM alpine:3.19
+          RUN apk add --no-cache curl
+          COPY . /app
+          CMD ["echo", "hello"]
+          EOF
+          echo "test content" > test-app/index.html
+
+      - name: Build with boringcache/docker
+        uses: ./
+        with:
+          workspace: boringcache/actions
+          image: test-app
+          context: test-app
+          tags: latest,ci-${{ github.run_id }}
+
+      - name: Verify image exists
+        run: docker images | grep test-app
+
+  test-build-args:
+    name: Test Build Args
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create test Dockerfile with ARG
+        run: |
+          mkdir -p test-app
+          cat > test-app/Dockerfile << 'EOF'
+          FROM alpine:3.19
+          ARG APP_VERSION=unknown
+          RUN echo "Version: $APP_VERSION" > /version.txt
+          CMD ["cat", "/version.txt"]
+          EOF
+
+      - name: Build with build args
+        uses: ./
+        with:
+          workspace: boringcache/actions
+          image: test-app-args
+          context: test-app
+          build-args: |
+            APP_VERSION=1.2.3
+
+      - name: Verify build arg was applied
+        run: |
+          docker run --rm test-app-args:latest | grep "1.2.3"
+
+  test-multi-stage:
+    name: Test Multi-Stage Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create multi-stage Dockerfile
+        run: |
+          mkdir -p test-app
+          cat > test-app/Dockerfile << 'EOF'
+          FROM alpine:3.19 AS builder
+          RUN echo "build artifact" > /artifact.txt
+
+          FROM alpine:3.19 AS runtime
+          COPY --from=builder /artifact.txt /app/
+          CMD ["cat", "/app/artifact.txt"]
+          EOF
+
+      - name: Build with target
+        uses: ./
+        with:
+          workspace: boringcache/actions
+          image: test-multi-stage
+          context: test-app
+          target: runtime
+
+      - name: Verify target build
+        run: |
+          docker run --rm test-multi-stage:latest | grep "build artifact"
+
+  test-cache-restore:
+    name: Test Cache Restore
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create Dockerfile
+        run: |
+          mkdir -p test-app
+          cat > test-app/Dockerfile << 'EOF'
+          FROM alpine:3.19
+          RUN apk add --no-cache git curl wget
+          RUN echo "cached layer" > /cached.txt
+          CMD ["cat", "/cached.txt"]
+          EOF
+
+      - name: First build (populate cache)
+        uses: ./
+        with:
+          workspace: boringcache/actions
+          image: cache-test
+          context: test-app
+          cache-tag: cache-restore-test-${{ github.run_id }}
+
+      - name: Second build (should use cache)
+        id: cached-build
+        uses: ./
+        with:
+          workspace: boringcache/actions
+          image: cache-test
+          context: test-app
+          cache-tag: cache-restore-test-${{ github.run_id }}
+
+      - name: Verify cache was used
+        run: |
+          echo "Cache hit: ${{ steps.cached-build.outputs.cache-hit }}"

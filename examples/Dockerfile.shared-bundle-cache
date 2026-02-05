@@ -1,0 +1,24 @@
+# syntax=docker/dockerfile:1.5
+FROM ruby:3.3-jammy
+
+ARG BORINGCACHE_WORKSPACE
+ARG BUNDLE_TAG=bundle
+
+WORKDIR /app
+
+# Expects Gemfile/Gemfile.lock in the build context root.
+RUN apt-get update && \
+  apt-get install -y --no-install-recommends curl && \
+  rm -rf /var/lib/apt/lists/*
+
+COPY Gemfile Gemfile.lock ./
+
+RUN --mount=type=secret,id=boringcache_token \
+  export BORINGCACHE_API_TOKEN="$(cat /run/secrets/boringcache_token)" && \
+  curl -sSL https://install.boringcache.com/install.sh | sh && \
+  boringcache restore "$BORINGCACHE_WORKSPACE" "${BUNDLE_TAG}:/usr/local/bundle" || true && \
+  bundle config set path /usr/local/bundle && \
+  bundle install && \
+  boringcache save "$BORINGCACHE_WORKSPACE" "${BUNDLE_TAG}:/usr/local/bundle"
+
+COPY . .

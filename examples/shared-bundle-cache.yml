@@ -1,0 +1,51 @@
+name: Docker build with shared bundle cache (BoringCache)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    # Match the base image OS (ruby:3.3-jammy) so native gems are compatible.
+    runs-on: ubuntu-22.04
+    env:
+      BORINGCACHE_API_TOKEN: ${{ secrets.BORINGCACHE_API_TOKEN }}
+      BORINGCACHE_WORKSPACE: ${{ github.repository }}
+      BUNDLE_TAG: bundle
+      APP_DIR: action/examples/rails_app
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+          bundler-cache: false
+
+      # Atomic cache on the runner (same tag reused inside the Dockerfile)
+      - name: Restore/save bundle cache on runner
+        uses: ./action
+        with:
+          workspace: ${{ env.BORINGCACHE_WORKSPACE }}
+          entries: ${{ env.BUNDLE_TAG }}:${{ env.APP_DIR }}/vendor/bundle
+
+      - name: Install gems on runner
+        working-directory: ${{ env.APP_DIR }}
+        run: |
+          bundle config set path vendor/bundle
+          bundle install
+
+      # Whole-image cache + BuildKit layer cache (BoringCache-backed)
+      - name: Build image with shared bundle cache
+        uses: ./docker
+        with:
+          workspace: ${{ env.BORINGCACHE_WORKSPACE }}
+          image: ghcr.io/${{ github.repository }}
+          tags: latest,${{ github.sha }}
+          context: ${{ env.APP_DIR }}
+          dockerfile: ${{ github.workspace }}/docker/examples/Dockerfile.shared-bundle-cache
+          build-args: |
+            BORINGCACHE_WORKSPACE=${{ env.BORINGCACHE_WORKSPACE }}
+            BUNDLE_TAG=${{ env.BUNDLE_TAG }}
+          secrets: |
+            id=boringcache_token,env=BORINGCACHE_API_TOKEN

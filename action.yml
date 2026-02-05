@@ -1,0 +1,102 @@
+name: 'BoringCache Docker'
+description: 'Cache once. Reuse everywhere. Build Docker images with BuildKit cache backed by BoringCache.'
+author: 'BoringCache'
+
+inputs:
+  cli-version:
+    description: 'BoringCache CLI version (e.g., v1.0.0). Set to "skip" to disable automatic CLI setup.'
+    required: false
+    default: 'v1.0.0'
+  context:
+    description: 'Docker build context path.'
+    required: false
+    default: '.'
+  dockerfile:
+    description: 'Path to Dockerfile.'
+    required: false
+    default: 'Dockerfile'
+  image:
+    description: 'Image name (e.g., my-app or ghcr.io/org/my-app).'
+    required: true
+  tags:
+    description: 'Image tags (comma-separated, e.g., latest,v1.0.0).'
+    required: false
+    default: 'latest'
+  build-args:
+    description: 'Build arguments (newline-separated, e.g., ARG1=value1).'
+    required: false
+    default: ''
+  target:
+    description: 'Target build stage.'
+    required: false
+    default: ''
+  platforms:
+    description: 'Target platforms for multi-arch builds (e.g., linux/amd64,linux/arm64).'
+    required: false
+    default: ''
+  push:
+    description: 'Push image to registry after build.'
+    required: false
+    default: 'false'
+  load:
+    description: 'Load image into local Docker daemon.'
+    required: false
+    default: 'true'
+  workspace:
+    description: 'BoringCache workspace identifier (e.g., my-org/my-project). Defaults to repository name.'
+    required: false
+  cache-tag:
+    description: 'Cache tag for BoringCache. Defaults to slugified image name. BoringCache is content-addressed, so no need to include hashes.'
+    required: false
+    default: ''
+  cache-mode:
+    description: 'BuildKit cache mode (min or max). Max caches all layers, min only final image layers.'
+    required: false
+    default: 'max'
+  no-cache:
+    description: 'Build without using cache.'
+    required: false
+    default: 'false'
+  secrets:
+    description: 'Build secrets (newline-separated, e.g., id=mysecret,src=./secret.txt).'
+    required: false
+    default: ''
+  # Buildx configuration
+  buildx-version:
+    description: 'Buildx version to use (e.g., v0.12.0, latest). Leave empty for default.'
+    required: false
+    default: ''
+  driver:
+    description: 'Buildx driver to use (docker-container, docker, kubernetes, remote).'
+    required: false
+    default: 'docker-container'
+  driver-opts:
+    description: 'Additional driver-specific options (newline-separated).'
+    required: false
+    default: ''
+  buildkitd-config-inline:
+    description: 'Inline BuildKit daemon config (TOML format).'
+    required: false
+    default: ''
+
+outputs:
+  image-id:
+    description: 'Image ID of the built image.'
+  digest:
+    description: 'Image digest.'
+  cache-hit:
+    description: 'Whether the Docker cache was restored.'
+  buildx-name:
+    description: 'Name of the buildx builder instance.'
+  buildx-platforms:
+    description: 'Available platforms for the builder.'
+
+runs:
+  using: 'node24'
+  main: 'dist/restore/index.js'
+  post: 'dist/save/index.js'
+  post-if: always()
+
+branding:
+  icon: 'package'
+  color: 'blue'

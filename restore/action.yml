@@ -1,0 +1,40 @@
+name: 'BoringCache Docker Restore'
+description: 'Cache once. Reuse everywhere. Restore Docker BuildKit cache from BoringCache.'
+author: 'BoringCache'
+
+inputs:
+  workspace:
+    description: 'BoringCache workspace identifier (e.g., my-org/my-project)'
+    required: true
+  cache-tag:
+    description: 'Cache tag for BoringCache. Defaults to slugified image name, or "docker" if no image provided.'
+    required: false
+    default: ''
+  image:
+    description: 'Image name for default cache tag generation'
+    required: false
+    default: ''
+  cache-dir:
+    description: 'Local directory for BuildKit cache'
+    required: false
+    default: '/tmp/buildkit-cache'
+  cli-version:
+    description: 'BoringCache CLI version to install'
+    required: false
+    default: ''
+
+outputs:
+  cache-hit:
+    description: 'Whether the cache was restored from BoringCache'
+  cache-tag:
+    description: 'The cache tag used for restore'
+  cache-dir:
+    description: 'The local cache directory path'
+
+runs:
+  using: 'node24'
+  main: dist/index.js
+
+branding:
+  icon: 'download'
+  color: 'blue'
