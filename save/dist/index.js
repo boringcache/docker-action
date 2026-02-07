@@ -45312,6 +45312,8 @@ async function run() {
         let cacheTag = core.getState('cacheTag') || core.getInput('cache-tag') || '';
         let cacheDir = core.getState('cacheDir') || core.getInput('cache-dir') || utils_1.CACHE_DIR;
         const cliVersion = core.getInput('cli-version') || 'v1.0.0';
+        const verbose = core.getState('verbose') === 'true' || (0, utils_1.parseBoolean)(core.getInput('verbose'), false);
+        const exclude = core.getState('exclude') || core.getInput('exclude') || '';
         // Resolve workspace
         if (!workspace) {
             workspace = process.env.BORINGCACHE_DEFAULT_WORKSPACE || '';
@@ -45336,7 +45338,8 @@ async function run() {
         if (cliVersion.toLowerCase() !== 'skip') {
             await (0, utils_1.ensureBoringCache)({ version: cliVersion });
         }
-        await (0, utils_1.saveCache)(workspace, cacheTag, cacheDir);
+        const cacheFlags = { verbose, exclude };
+        await (0, utils_1.saveCache)(workspace, cacheTag, cacheDir, cacheFlags);
         core.info('Save to BoringCache complete');
     }
     catch (error) {
@@ -45488,19 +45491,23 @@ function wasCacheHit(exitCode) {
     const missPatterns = [/Cache miss/i, /No cache entries/i, /Found 0\//i];
     return !missPatterns.some(pattern => pattern.test(lastOutput));
 }
-async function restoreCache(workspace, cacheKey, cacheDir) {
+async function restoreCache(workspace, cacheKey, cacheDir, flags = {}) {
     if (!process.env.BORINGCACHE_API_TOKEN) {
         core.notice('Skipping cache restore (BORINGCACHE_API_TOKEN not set)');
         return false;
     }
-    const result = await execBoringCache(['restore', workspace, `${cacheKey}:${cacheDir}`]);
+    const args = ['restore', workspace, `${cacheKey}:${cacheDir}`];
+    if (flags.verbose) {
+        args.push('--verbose');
+    }
+    const result = await execBoringCache(args);
     if (wasCacheHit(result)) {
         return true;
     }
     core.info('Cache miss');
     return false;
 }
-async function saveCache(workspace, cacheKey, cacheDir) {
+async function saveCache(workspace, cacheKey, cacheDir, flags = {}) {
     if (!process.env.BORINGCACHE_API_TOKEN) {
         core.notice('Skipping cache save (BORINGCACHE_API_TOKEN not set)');
         return;
@@ -45509,7 +45516,14 @@ async function saveCache(workspace, cacheKey, cacheDir) {
         core.notice('No cache files to save');
         return;
     }
-    await execBoringCache(['save', workspace, `${cacheKey}:${cacheDir}`, '--force']);
+    const args = ['save', workspace, `${cacheKey}:${cacheDir}`, '--force'];
+    if (flags.verbose) {
+        args.push('--verbose');
+    }
+    if (flags.exclude) {
+        args.push('--exclude', flags.exclude);
+    }
+    await execBoringCache(args);
     core.info('Cache saved');
 }
 async function setupQemuIfNeeded(platforms) {

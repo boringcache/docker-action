@@ -45309,15 +45309,18 @@ async function run() {
         const workspace = (0, utils_1.getWorkspace)(core.getInput('workspace', { required: true }));
         const cacheDir = core.getInput('cache-dir') || utils_1.CACHE_DIR;
         const cliVersion = core.getInput('cli-version') || 'v1.0.0';
+        const verbose = (0, utils_1.parseBoolean)(core.getInput('verbose'), false);
+        const exclude = core.getInput('exclude') || '';
         // Cache tag: user-provided or default to slugified image name
         // BoringCache is content-addressed, so no hash needed in the tag
         const image = core.getInput('image') || '';
         const cacheTag = core.getInput('cache-tag') || (image ? (0, utils_1.slugify)(image) : 'docker');
+        const cacheFlags = { verbose, exclude };
         (0, utils_1.ensureDir)(cacheDir);
         if (cliVersion.toLowerCase() !== 'skip') {
             await (0, utils_1.ensureBoringCache)({ version: cliVersion });
         }
-        const cacheHit = await (0, utils_1.restoreCache)(workspace, cacheTag, cacheDir);
+        const cacheHit = await (0, utils_1.restoreCache)(workspace, cacheTag, cacheDir, cacheFlags);
         // Set outputs
         core.setOutput('cache-hit', cacheHit ? 'true' : 'false');
         core.setOutput('cache-tag', cacheTag);
@@ -45326,6 +45329,8 @@ async function run() {
         core.saveState('workspace', workspace);
         core.saveState('cacheTag', cacheTag);
         core.saveState('cacheDir', cacheDir);
+        core.saveState('verbose', verbose.toString());
+        core.saveState('exclude', exclude);
         if (cacheHit) {
             core.notice(`Cache restored from BoringCache (tag: ${cacheTag})`);
         }
@@ -45482,19 +45487,23 @@ function wasCacheHit(exitCode) {
     const missPatterns = [/Cache miss/i, /No cache entries/i, /Found 0\//i];
     return !missPatterns.some(pattern => pattern.test(lastOutput));
 }
-async function restoreCache(workspace, cacheKey, cacheDir) {
+async function restoreCache(workspace, cacheKey, cacheDir, flags = {}) {
     if (!process.env.BORINGCACHE_API_TOKEN) {
         core.notice('Skipping cache restore (BORINGCACHE_API_TOKEN not set)');
         return false;
     }
-    const result = await execBoringCache(['restore', workspace, `${cacheKey}:${cacheDir}`]);
+    const args = ['restore', workspace, `${cacheKey}:${cacheDir}`];
+    if (flags.verbose) {
+        args.push('--verbose');
+    }
+    const result = await execBoringCache(args);
     if (wasCacheHit(result)) {
         return true;
     }
     core.info('Cache miss');
     return false;
 }
-async function saveCache(workspace, cacheKey, cacheDir) {
+async function saveCache(workspace, cacheKey, cacheDir, flags = {}) {
     if (!process.env.BORINGCACHE_API_TOKEN) {
         core.notice('Skipping cache save (BORINGCACHE_API_TOKEN not set)');
         return;
@@ -45503,7 +45512,14 @@ async function saveCache(workspace, cacheKey, cacheDir) {
         core.notice('No cache files to save');
         return;
     }
-    await execBoringCache(['save', workspace, `${cacheKey}:${cacheDir}`, '--force']);
+    const args = ['save', workspace, `${cacheKey}:${cacheDir}`, '--force'];
+    if (flags.verbose) {
+        args.push('--verbose');
+    }
+    if (flags.exclude) {
+        args.push('--exclude', flags.exclude);
+    }
+    await execBoringCache(args);
     core.info('Cache saved');
 }
 async function setupQemuIfNeeded(platforms) {
