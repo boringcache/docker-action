@@ -14,7 +14,8 @@ import {
   setupBuildxBuilder,
   getBuilderPlatforms,
   buildDockerImage,
-  readMetadata
+  readMetadata,
+  CacheFlags
 } from './utils';
 
 async function run(): Promise<void> {
@@ -37,15 +38,21 @@ async function run(): Promise<void> {
     const buildkitdConfigInline = core.getInput('buildkitd-config-inline') || '';
 
     const workspace = getWorkspace(core.getInput('workspace') || '');
+    const verbose = parseBoolean(core.getInput('verbose'), false);
+    const exclude = core.getInput('exclude') || '';
 
     // Cache tag: user-provided or default to slugified image name
     // BoringCache is content-addressed, so no hash needed in the tag
     const cacheTag = core.getInput('cache-tag') || slugify(image);
 
+    const cacheFlags: CacheFlags = { verbose, exclude };
+
     // Save state for post phase
     core.saveState('workspace', workspace);
     core.saveState('cacheDir', CACHE_DIR);
     core.saveState('cacheTag', cacheTag);
+    core.saveState('verbose', verbose.toString());
+    core.saveState('exclude', exclude);
 
     ensureDir(CACHE_DIR);
 
@@ -57,7 +64,7 @@ async function run(): Promise<void> {
     core.setOutput('buildx-platforms', await getBuilderPlatforms(builderName));
     await setupQemuIfNeeded(platforms);
 
-    const cacheHit = await restoreCache(workspace, cacheTag, CACHE_DIR);
+    const cacheHit = await restoreCache(workspace, cacheTag, CACHE_DIR, cacheFlags);
     core.setOutput('cache-hit', cacheHit ? 'true' : 'false');
 
     await buildDockerImage({

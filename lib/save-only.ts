@@ -4,7 +4,9 @@ import {
   CACHE_DIR,
   slugify,
   ensureBoringCache,
-  saveCache
+  saveCache,
+  parseBoolean,
+  CacheFlags
 } from './utils';
 
 async function run(): Promise<void> {
@@ -14,6 +16,8 @@ async function run(): Promise<void> {
     let cacheTag = core.getState('cacheTag') || core.getInput('cache-tag') || '';
     let cacheDir = core.getState('cacheDir') || core.getInput('cache-dir') || CACHE_DIR;
     const cliVersion = core.getInput('cli-version') || 'v1.0.0';
+    const verbose = core.getState('verbose') === 'true' || parseBoolean(core.getInput('verbose'), false);
+    const exclude = core.getState('exclude') || core.getInput('exclude') || '';
 
     // Resolve workspace
     if (!workspace) {
@@ -43,7 +47,8 @@ async function run(): Promise<void> {
       await ensureBoringCache({ version: cliVersion });
     }
 
-    await saveCache(workspace, cacheTag, cacheDir);
+    const cacheFlags: CacheFlags = { verbose, exclude };
+    await saveCache(workspace, cacheTag, cacheDir, cacheFlags);
 
     core.info('Save to BoringCache complete');
   } catch (error) {

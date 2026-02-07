@@ -43,6 +43,8 @@ async function run() {
         let cacheTag = core.getState('cacheTag') || core.getInput('cache-tag') || '';
         let cacheDir = core.getState('cacheDir') || core.getInput('cache-dir') || utils_1.CACHE_DIR;
         const cliVersion = core.getInput('cli-version') || 'v1.0.0';
+        const verbose = core.getState('verbose') === 'true' || (0, utils_1.parseBoolean)(core.getInput('verbose'), false);
+        const exclude = core.getState('exclude') || core.getInput('exclude') || '';
         // Resolve workspace
         if (!workspace) {
             workspace = process.env.BORINGCACHE_DEFAULT_WORKSPACE || '';
@@ -67,7 +69,8 @@ async function run() {
         if (cliVersion.toLowerCase() !== 'skip') {
             await (0, utils_1.ensureBoringCache)({ version: cliVersion });
         }
-        await (0, utils_1.saveCache)(workspace, cacheTag, cacheDir);
+        const cacheFlags = { verbose, exclude };
+        await (0, utils_1.saveCache)(workspace, cacheTag, cacheDir, cacheFlags);
         core.info('Save to BoringCache complete');
     }
     catch (error) {

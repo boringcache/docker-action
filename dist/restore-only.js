@@ -40,15 +40,18 @@ async function run() {
         const workspace = (0, utils_1.getWorkspace)(core.getInput('workspace', { required: true }));
         const cacheDir = core.getInput('cache-dir') || utils_1.CACHE_DIR;
         const cliVersion = core.getInput('cli-version') || 'v1.0.0';
+        const verbose = (0, utils_1.parseBoolean)(core.getInput('verbose'), false);
+        const exclude = core.getInput('exclude') || '';
         // Cache tag: user-provided or default to slugified image name
         // BoringCache is content-addressed, so no hash needed in the tag
         const image = core.getInput('image') || '';
         const cacheTag = core.getInput('cache-tag') || (image ? (0, utils_1.slugify)(image) : 'docker');
+        const cacheFlags = { verbose, exclude };
         (0, utils_1.ensureDir)(cacheDir);
         if (cliVersion.toLowerCase() !== 'skip') {
             await (0, utils_1.ensureBoringCache)({ version: cliVersion });
         }
-        const cacheHit = await (0, utils_1.restoreCache)(workspace, cacheTag, cacheDir);
+        const cacheHit = await (0, utils_1.restoreCache)(workspace, cacheTag, cacheDir, cacheFlags);
         // Set outputs
         core.setOutput('cache-hit', cacheHit ? 'true' : 'false');
         core.setOutput('cache-tag', cacheTag);
@@ -57,6 +60,8 @@ async function run() {
         core.saveState('workspace', workspace);
         core.saveState('cacheTag', cacheTag);
         core.saveState('cacheDir', cacheDir);
+        core.saveState('verbose', verbose.toString());
+        core.saveState('exclude', exclude);
         if (cacheHit) {
             core.notice(`Cache restored from BoringCache (tag: ${cacheTag})`);
         }

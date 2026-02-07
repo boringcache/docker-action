@@ -41,15 +41,18 @@ async function run() {
         const workspace = core.getState('workspace');
         const cacheDir = core.getState('cacheDir');
         const cacheTag = core.getState('cacheTag');
+        const verbose = core.getState('verbose') === 'true';
+        const exclude = core.getState('exclude') || '';
         if (!workspace || !cacheDir || !cacheTag) {
             core.notice('Cache save skipped because required state is missing');
             return;
         }
+        const cacheFlags = { verbose, exclude };
         // Re-add expected PATH entries in case the post phase lost them
         const homedir = os.homedir();
         core.addPath(`${homedir}/.local/bin`);
         core.addPath(`${homedir}/.boringcache/bin`);
-        await (0, utils_1.saveCache)(workspace, cacheTag, cacheDir);
+        await (0, utils_1.saveCache)(workspace, cacheTag, cacheDir, cacheFlags);
         core.info('Save to BoringCache complete');
     }
     catch (error) {

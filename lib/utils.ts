@@ -100,13 +100,23 @@ export function wasCacheHit(exitCode: number): boolean {
   return !missPatterns.some(pattern => pattern.test(lastOutput));
 }
 
-export async function restoreCache(workspace: string, cacheKey: string, cacheDir: string): Promise<boolean> {
+export interface CacheFlags {
+  verbose?: boolean;
+  exclude?: string;
+}
+
+export async function restoreCache(workspace: string, cacheKey: string, cacheDir: string, flags: CacheFlags = {}): Promise<boolean> {
   if (!process.env.BORINGCACHE_API_TOKEN) {
     core.notice('Skipping cache restore (BORINGCACHE_API_TOKEN not set)');
     return false;
   }
 
-  const result = await execBoringCache(['restore', workspace, `${cacheKey}:${cacheDir}`]);
+  const args = ['restore', workspace, `${cacheKey}:${cacheDir}`];
+  if (flags.verbose) {
+    args.push('--verbose');
+  }
+
+  const result = await execBoringCache(args);
 
   if (wasCacheHit(result)) {
     return true;
@@ -116,7 +126,7 @@ export async function restoreCache(workspace: string, cacheKey: string, cacheDir
   return false;
 }
 
-export async function saveCache(workspace: string, cacheKey: string, cacheDir: string): Promise<void> {
+export async function saveCache(workspace: string, cacheKey: string, cacheDir: string, flags: CacheFlags = {}): Promise<void> {
   if (!process.env.BORINGCACHE_API_TOKEN) {
     core.notice('Skipping cache save (BORINGCACHE_API_TOKEN not set)');
     return;
@@ -127,7 +137,15 @@ export async function saveCache(workspace: string, cacheKey: string, cacheDir: s
     return;
   }
 
-  await execBoringCache(['save', workspace, `${cacheKey}:${cacheDir}`, '--force']);
+  const args = ['save', workspace, `${cacheKey}:${cacheDir}`, '--force'];
+  if (flags.verbose) {
+    args.push('--verbose');
+  }
+  if (flags.exclude) {
+    args.push('--exclude', flags.exclude);
+  }
+
+  await execBoringCache(args);
   core.info('Cache saved');
 }
 

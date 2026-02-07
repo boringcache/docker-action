@@ -78,6 +78,14 @@ inputs:
     description: 'Inline BuildKit daemon config (TOML format).'
     required: false
     default: ''
+  verbose:
+    description: 'Enable verbose CLI output for debugging'
+    required: false
+    default: 'false'
+  exclude:
+    description: 'Glob pattern to exclude files from cache (e.g., "*.tmp")'
+    required: false
+    default: ''
 
 outputs:
   image-id:
