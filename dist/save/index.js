@@ -45304,6 +45304,7 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 const core = __importStar(__nccwpck_require__(37484));
 const os = __importStar(__nccwpck_require__(70857));
+const path = __importStar(__nccwpck_require__(16928));
 const utils_1 = __nccwpck_require__(2219);
 async function run() {
     try {
@@ -45319,8 +45320,8 @@ async function run() {
         const cacheFlags = { verbose, exclude };
         // Re-add expected PATH entries in case the post phase lost them
         const homedir = os.homedir();
-        core.addPath(`${homedir}/.local/bin`);
-        core.addPath(`${homedir}/.boringcache/bin`);
+        core.addPath(path.join(homedir, '.local', 'bin'));
+        core.addPath(path.join(homedir, '.boringcache', 'bin'));
         await (0, utils_1.saveCache)(workspace, cacheTag, cacheDir, cacheFlags);
         core.info('Save to BoringCache complete');
     }
@@ -45395,11 +45396,12 @@ const core = __importStar(__nccwpck_require__(37484));
 const exec = __importStar(__nccwpck_require__(95236));
 const fs = __importStar(__nccwpck_require__(79896));
 const path = __importStar(__nccwpck_require__(16928));
+const os = __importStar(__nccwpck_require__(70857));
 const crypto = __importStar(__nccwpck_require__(76982));
 const action_core_1 = __nccwpck_require__(68701);
 Object.defineProperty(exports, "ensureBoringCache", ({ enumerable: true, get: function () { return action_core_1.ensureBoringCache; } }));
-exports.CACHE_DIR = '/tmp/buildkit-cache';
-exports.METADATA_FILE = '/tmp/docker-metadata.json';
+exports.CACHE_DIR = path.join(os.tmpdir(), 'buildkit-cache');
+exports.METADATA_FILE = path.join(os.tmpdir(), 'docker-metadata.json');
 let lastOutput = '';
 function parseBoolean(value, defaultValue = false) {
     if (value === undefined || value === null || value === '')
@@ -45526,7 +45528,7 @@ async function setupBuildxBuilder(driver, driverOpts, buildkitdConfigInline) {
     }
     let configPath = '';
     if (buildkitdConfigInline && buildkitdConfigInline.trim().length > 0) {
-        configPath = path.join('/tmp', `buildkitd-${Date.now()}.toml`);
+        configPath = path.join(os.tmpdir(), `buildkitd-${Date.now()}.toml`);
         fs.writeFileSync(configPath, buildkitdConfigInline);
     }
     const inspectResult = await exec.exec('docker', ['buildx', 'inspect', builderName], {

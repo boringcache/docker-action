@@ -35,6 +35,7 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 const core = __importStar(require("@actions/core"));
 const os = __importStar(require("os"));
+const path = __importStar(require("path"));
 const utils_1 = require("./utils");
 async function run() {
     try {
@@ -50,8 +51,8 @@ async function run() {
         const cacheFlags = { verbose, exclude };
         // Re-add expected PATH entries in case the post phase lost them
         const homedir = os.homedir();
-        core.addPath(`${homedir}/.local/bin`);
-        core.addPath(`${homedir}/.boringcache/bin`);
+        core.addPath(path.join(homedir, '.local', 'bin'));
+        core.addPath(path.join(homedir, '.boringcache', 'bin'));
         await (0, utils_1.saveCache)(workspace, cacheTag, cacheDir, cacheFlags);
         core.info('Save to BoringCache complete');
     }

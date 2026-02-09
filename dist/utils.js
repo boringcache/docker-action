@@ -54,11 +54,12 @@ const core = __importStar(require("@actions/core"));
 const exec = __importStar(require("@actions/exec"));
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
+const os = __importStar(require("os"));
 const crypto = __importStar(require("crypto"));
 const action_core_1 = require("@boringcache/action-core");
 Object.defineProperty(exports, "ensureBoringCache", { enumerable: true, get: function () { return action_core_1.ensureBoringCache; } });
-exports.CACHE_DIR = '/tmp/buildkit-cache';
-exports.METADATA_FILE = '/tmp/docker-metadata.json';
+exports.CACHE_DIR = path.join(os.tmpdir(), 'buildkit-cache');
+exports.METADATA_FILE = path.join(os.tmpdir(), 'docker-metadata.json');
 let lastOutput = '';
 function parseBoolean(value, defaultValue = false) {
     if (value === undefined || value === null || value === '')
@@ -185,7 +186,7 @@ async function setupBuildxBuilder(driver, driverOpts, buildkitdConfigInline) {
     }
     let configPath = '';
     if (buildkitdConfigInline && buildkitdConfigInline.trim().length > 0) {
-        configPath = path.join('/tmp', `buildkitd-${Date.now()}.toml`);
+        configPath = path.join(os.tmpdir(), `buildkitd-${Date.now()}.toml`);
         fs.writeFileSync(configPath, buildkitdConfigInline);
     }
     const inspectResult = await exec.exec('docker', ['buildx', 'inspect', builderName], {

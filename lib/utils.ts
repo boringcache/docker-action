@@ -8,8 +8,8 @@ import { ensureBoringCache, execBoringCache as execBoringCacheCore } from '@bori
 
 export { ensureBoringCache };
 
-export const CACHE_DIR = '/tmp/buildkit-cache';
-export const METADATA_FILE = '/tmp/docker-metadata.json';
+export const CACHE_DIR = path.join(os.tmpdir(), 'buildkit-cache');
+export const METADATA_FILE = path.join(os.tmpdir(), 'docker-metadata.json');
 
 let lastOutput = '';
 
@@ -179,7 +179,7 @@ export async function setupBuildxBuilder(
 
   let configPath = '';
   if (buildkitdConfigInline && buildkitdConfigInline.trim().length > 0) {
-    configPath = path.join('/tmp', `buildkitd-${Date.now()}.toml`);
+    configPath = path.join(os.tmpdir(), `buildkitd-${Date.now()}.toml`);
     fs.writeFileSync(configPath, buildkitdConfigInline);
   }
 

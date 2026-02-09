@@ -1,5 +1,6 @@
 import * as core from '@actions/core';
 import * as os from 'os';
+import * as path from 'path';
 import {
   CACHE_DIR,
   slugify,
@@ -40,8 +41,8 @@ async function run(): Promise<void> {
 
     // Re-add expected PATH entries in case they were lost
     const homedir = os.homedir();
-    core.addPath(`${homedir}/.local/bin`);
-    core.addPath(`${homedir}/.boringcache/bin`);
+    core.addPath(path.join(homedir, '.local', 'bin'));
+    core.addPath(path.join(homedir, '.boringcache', 'bin'));
 
     if (cliVersion.toLowerCase() !== 'skip') {
       await ensureBoringCache({ version: cliVersion });

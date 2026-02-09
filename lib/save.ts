@@ -1,5 +1,6 @@
 import * as core from '@actions/core';
 import * as os from 'os';
+import * as path from 'path';
 import { saveCache, CacheFlags } from './utils';
 
 async function run(): Promise<void> {
@@ -19,8 +20,8 @@ async function run(): Promise<void> {
 
     // Re-add expected PATH entries in case the post phase lost them
     const homedir = os.homedir();
-    core.addPath(`${homedir}/.local/bin`);
-    core.addPath(`${homedir}/.boringcache/bin`);
+    core.addPath(path.join(homedir, '.local', 'bin'));
+    core.addPath(path.join(homedir, '.boringcache', 'bin'));
 
     await saveCache(workspace, cacheTag, cacheDir, cacheFlags);
 
