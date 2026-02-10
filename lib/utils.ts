@@ -9,6 +9,8 @@ import { ensureBoringCache, execBoringCache as execBoringCacheCore } from '@bori
 export { ensureBoringCache };
 
 export const CACHE_DIR = path.join(os.tmpdir(), 'buildkit-cache');
+export const CACHE_DIR_FROM = path.join(os.tmpdir(), 'buildkit-cache-from');
+export const CACHE_DIR_TO = path.join(os.tmpdir(), 'buildkit-cache-to');
 export const METADATA_FILE = path.join(os.tmpdir(), 'docker-metadata.json');
 
 let lastOutput = '';
@@ -243,7 +245,8 @@ export interface DockerBuildOptions {
   load: boolean;
   noCache: boolean;
   builder: string;
-  cacheDir: string;
+  cacheDirFrom: string;
+  cacheDirTo: string;
   cacheMode: string;
 }
 
@@ -289,8 +292,8 @@ export async function buildDockerImage(opts: DockerBuildOptions): Promise<void> 
     args.push('--no-cache');
   }
 
-  args.push('--cache-from', `type=local,src=${opts.cacheDir}`);
-  args.push('--cache-to', `type=local,dest=${opts.cacheDir},mode=${opts.cacheMode}`);
+  args.push('--cache-from', `type=local,src=${opts.cacheDirFrom}`);
+  args.push('--cache-to', `type=local,dest=${opts.cacheDirTo},mode=${opts.cacheMode}`);
   args.push('--metadata-file', METADATA_FILE);
   args.push('.');
 

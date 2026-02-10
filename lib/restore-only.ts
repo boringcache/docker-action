@@ -25,7 +25,10 @@ async function run(): Promise<void> {
 
     const cacheFlags: CacheFlags = { verbose, exclude };
 
+    const saveCacheDir = `${cacheDir}-to`;
+
     ensureDir(cacheDir);
+    ensureDir(saveCacheDir);
 
     if (cliVersion.toLowerCase() !== 'skip') {
       await ensureBoringCache({ version: cliVersion });
@@ -37,11 +40,12 @@ async function run(): Promise<void> {
     core.setOutput('cache-hit', cacheHit ? 'true' : 'false');
     core.setOutput('cache-tag', cacheTag);
     core.setOutput('cache-dir', cacheDir);
+    core.setOutput('save-cache-dir', saveCacheDir);
 
     // Save state for potential use by save action
     core.saveState('workspace', workspace);
     core.saveState('cacheTag', cacheTag);
-    core.saveState('cacheDir', cacheDir);
+    core.saveState('cacheDir', saveCacheDir);
     core.saveState('verbose', verbose.toString());
     core.saveState('exclude', exclude);
 

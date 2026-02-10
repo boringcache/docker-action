@@ -1,7 +1,8 @@
 import * as core from '@actions/core';
 import * as path from 'path';
 import {
-  CACHE_DIR,
+  CACHE_DIR_FROM,
+  CACHE_DIR_TO,
   parseBoolean,
   parseList,
   parseMultiline,
@@ -49,12 +50,13 @@ async function run(): Promise<void> {
 
     // Save state for post phase
     core.saveState('workspace', workspace);
-    core.saveState('cacheDir', CACHE_DIR);
+    core.saveState('cacheDir', CACHE_DIR_TO);
     core.saveState('cacheTag', cacheTag);
     core.saveState('verbose', verbose.toString());
     core.saveState('exclude', exclude);
 
-    ensureDir(CACHE_DIR);
+    ensureDir(CACHE_DIR_FROM);
+    ensureDir(CACHE_DIR_TO);
 
     if (cliVersion.toLowerCase() !== 'skip') {
       await ensureBoringCache({ version: cliVersion || 'v1.0.0' });
@@ -64,7 +66,7 @@ async function run(): Promise<void> {
     core.setOutput('buildx-platforms', await getBuilderPlatforms(builderName));
     await setupQemuIfNeeded(platforms);
 
-    const cacheHit = await restoreCache(workspace, cacheTag, CACHE_DIR, cacheFlags);
+    const cacheHit = await restoreCache(workspace, cacheTag, CACHE_DIR_FROM, cacheFlags);
     core.setOutput('cache-hit', cacheHit ? 'true' : 'false');
 
     await buildDockerImage({
@@ -80,7 +82,8 @@ async function run(): Promise<void> {
       load,
       noCache,
       builder: builderName,
-      cacheDir: CACHE_DIR,
+      cacheDirFrom: CACHE_DIR_FROM,
+      cacheDirTo: CACHE_DIR_TO,
       cacheMode
     });
 

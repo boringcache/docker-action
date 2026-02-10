@@ -47,7 +47,9 @@ async function run() {
         const image = core.getInput('image') || '';
         const cacheTag = core.getInput('cache-tag') || (image ? (0, utils_1.slugify)(image) : 'docker');
         const cacheFlags = { verbose, exclude };
+        const saveCacheDir = `${cacheDir}-to`;
         (0, utils_1.ensureDir)(cacheDir);
+        (0, utils_1.ensureDir)(saveCacheDir);
         if (cliVersion.toLowerCase() !== 'skip') {
             await (0, utils_1.ensureBoringCache)({ version: cliVersion });
         }
@@ -56,10 +58,11 @@ async function run() {
         core.setOutput('cache-hit', cacheHit ? 'true' : 'false');
         core.setOutput('cache-tag', cacheTag);
         core.setOutput('cache-dir', cacheDir);
+        core.setOutput('save-cache-dir', saveCacheDir);
         // Save state for potential use by save action
         core.saveState('workspace', workspace);
         core.saveState('cacheTag', cacheTag);
-        core.saveState('cacheDir', cacheDir);
+        core.saveState('cacheDir', saveCacheDir);
         core.saveState('verbose', verbose.toString());
         core.saveState('exclude', exclude);
         if (cacheHit) {

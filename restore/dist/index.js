@@ -45316,7 +45316,9 @@ async function run() {
         const image = core.getInput('image') || '';
         const cacheTag = core.getInput('cache-tag') || (image ? (0, utils_1.slugify)(image) : 'docker');
         const cacheFlags = { verbose, exclude };
+        const saveCacheDir = `${cacheDir}-to`;
         (0, utils_1.ensureDir)(cacheDir);
+        (0, utils_1.ensureDir)(saveCacheDir);
         if (cliVersion.toLowerCase() !== 'skip') {
             await (0, utils_1.ensureBoringCache)({ version: cliVersion });
         }
@@ -45325,10 +45327,11 @@ async function run() {
         core.setOutput('cache-hit', cacheHit ? 'true' : 'false');
         core.setOutput('cache-tag', cacheTag);
         core.setOutput('cache-dir', cacheDir);
+        core.setOutput('save-cache-dir', saveCacheDir);
         // Save state for potential use by save action
         core.saveState('workspace', workspace);
         core.saveState('cacheTag', cacheTag);
-        core.saveState('cacheDir', cacheDir);
+        core.saveState('cacheDir', saveCacheDir);
         core.saveState('verbose', verbose.toString());
         core.saveState('exclude', exclude);
         if (cacheHit) {
@@ -45388,7 +45391,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.METADATA_FILE = exports.CACHE_DIR = exports.ensureBoringCache = void 0;
+exports.METADATA_FILE = exports.CACHE_DIR_TO = exports.CACHE_DIR_FROM = exports.CACHE_DIR = exports.ensureBoringCache = void 0;
 exports.parseBoolean = parseBoolean;
 exports.parseList = parseList;
 exports.parseMultiline = parseMultiline;
@@ -45414,6 +45417,8 @@ const crypto = __importStar(__nccwpck_require__(76982));
 const action_core_1 = __nccwpck_require__(68701);
 Object.defineProperty(exports, "ensureBoringCache", ({ enumerable: true, get: function () { return action_core_1.ensureBoringCache; } }));
 exports.CACHE_DIR = path.join(os.tmpdir(), 'buildkit-cache');
+exports.CACHE_DIR_FROM = path.join(os.tmpdir(), 'buildkit-cache-from');
+exports.CACHE_DIR_TO = path.join(os.tmpdir(), 'buildkit-cache-to');
 exports.METADATA_FILE = path.join(os.tmpdir(), 'docker-metadata.json');
 let lastOutput = '';
 function parseBoolean(value, defaultValue = false) {
@@ -45617,8 +45622,8 @@ async function buildDockerImage(opts) {
     if (opts.noCache) {
         args.push('--no-cache');
     }
-    args.push('--cache-from', `type=local,src=${opts.cacheDir}`);
-    args.push('--cache-to', `type=local,dest=${opts.cacheDir},mode=${opts.cacheMode}`);
+    args.push('--cache-from', `type=local,src=${opts.cacheDirFrom}`);
+    args.push('--cache-to', `type=local,dest=${opts.cacheDirTo},mode=${opts.cacheMode}`);
     args.push('--metadata-file', exports.METADATA_FILE);
     args.push('.');
     const result = await exec.exec('docker', args, {
