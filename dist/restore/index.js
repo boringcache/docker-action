@@ -45344,7 +45344,7 @@ async function run() {
         await (0, utils_1.setupQemuIfNeeded)(platforms);
         if (useRegistryProxy) {
             const proxyPid = await (0, utils_1.startRegistryProxy)(workspace, proxyPort, verbose);
-            await (0, utils_1.waitForProxy)(proxyPort);
+            await (0, utils_1.waitForProxy)(proxyPort, 20000, proxyPid);
             core.saveState('proxyPid', String(proxyPid));
             const ref = (0, utils_1.getRegistryRef)(proxyPort, cacheTag);
             await (0, utils_1.buildDockerImage)({
@@ -45553,28 +45553,36 @@ async function saveCache(workspace, cacheKey, cacheDir, flags = {}) {
 function getRegistryRef(port, cacheTag) {
     return `localhost:${port}/${cacheTag}`;
 }
+let proxyLogs = [];
 async function startRegistryProxy(workspace, port, verbose) {
     if (!process.env.BORINGCACHE_API_TOKEN) {
         throw new Error('BORINGCACHE_API_TOKEN is required for registry proxy mode');
     }
-    const args = ['serve', workspace, '--port', String(port)];
+    proxyLogs = [];
+    const args = ['serve', workspace, '--host', '127.0.0.1', '--port', String(port)];
     if (verbose) {
         args.push('--verbose');
     }
-    core.info(`Starting registry proxy on localhost:${port}...`);
+    core.info(`Starting registry proxy on 127.0.0.1:${port}...`);
     const child = (0, child_process_1.spawn)('boringcache', args, {
         detached: true,
-        stdio: verbose ? ['ignore', 'pipe', 'pipe'] : 'ignore',
+        stdio: ['ignore', 'pipe', 'pipe'],
         env: process.env
     });
-    if (verbose && child.stdout) {
+    if (child.stdout) {
         child.stdout.on('data', (data) => {
-            core.debug(`[proxy] ${data.toString().trim()}`);
+            const line = data.toString().trim();
+            proxyLogs.push(line);
+            if (verbose)
+                core.info(`[proxy] ${line}`);
         });
     }
-    if (verbose && child.stderr) {
+    if (child.stderr) {
         child.stderr.on('data', (data) => {
-            core.debug(`[proxy] ${data.toString().trim()}`);
+            const line = data.toString().trim();
+            proxyLogs.push(line);
+            if (verbose)
+                core.info(`[proxy] ${line}`);
         });
     }
     child.unref();
@@ -45584,13 +45592,26 @@ async function startRegistryProxy(workspace, port, verbose) {
     core.info(`Registry proxy started (PID: ${child.pid})`);
     return child.pid;
 }
-async function waitForProxy(port, timeoutMs = 10000) {
+function isProcessAlive(pid) {
+    try {
+        process.kill(pid, 0);
+        return true;
+    }
+    catch {
+        return false;
+    }
+}
+async function waitForProxy(port, timeoutMs = 20000, pid) {
     const start = Date.now();
-    const interval = 200;
+    const interval = 500;
     while (Date.now() - start < timeoutMs) {
+        if (pid && !isProcessAlive(pid)) {
+            const logs = proxyLogs.join('\n');
+            throw new Error(`Registry proxy exited before becoming ready${logs ? `:\n${logs}` : ''}`);
+        }
         try {
             const ok = await new Promise((resolve) => {
-                const req = http.get(`http://localhost:${port}/v2/`, (res) => {
+                const req = http.get(`http://127.0.0.1:${port}/v2/`, (res) => {
                     resolve(res.statusCode === 200 || res.statusCode === 401);
                 });
                 req.on('error', () => resolve(false));
@@ -45608,7 +45629,8 @@ async function waitForProxy(port, timeoutMs = 10000) {
         }
         await new Promise(resolve => setTimeout(resolve, interval));
     }
-    throw new Error(`Registry proxy did not become ready within ${timeoutMs}ms`);
+    const logs = proxyLogs.join('\n');
+    throw new Error(`Registry proxy did not become ready within ${timeoutMs}ms${logs ? `:\n${logs}` : ''}`);
 }
 async function stopRegistryProxy(pid) {
     core.info(`Stopping registry proxy (PID: ${pid})...`);

@@ -66,7 +66,7 @@ async function run(): Promise<void> {
 
     if (useRegistryProxy) {
       const proxyPid = await startRegistryProxy(workspace, proxyPort, verbose);
-      await waitForProxy(proxyPort);
+      await waitForProxy(proxyPort, 20000, proxyPid);
       core.saveState('proxyPid', String(proxyPid));
 
       const ref = getRegistryRef(proxyPort, cacheTag);

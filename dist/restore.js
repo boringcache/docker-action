@@ -75,7 +75,7 @@ async function run() {
         await (0, utils_1.setupQemuIfNeeded)(platforms);
         if (useRegistryProxy) {
             const proxyPid = await (0, utils_1.startRegistryProxy)(workspace, proxyPort, verbose);
-            await (0, utils_1.waitForProxy)(proxyPort);
+            await (0, utils_1.waitForProxy)(proxyPort, 20000, proxyPid);
             core.saveState('proxyPid', String(proxyPid));
             const ref = (0, utils_1.getRegistryRef)(proxyPort, cacheTag);
             await (0, utils_1.buildDockerImage)({
