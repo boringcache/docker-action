@@ -111,8 +111,49 @@ export async function saveCache(workspace: string, cacheKey: string, cacheDir: s
   core.info('Cache saved');
 }
 
-export function getRegistryRef(port: number, cacheTag: string): string {
-  return `127.0.0.1:${port}/${cacheTag}`;
+export function getRegistryRef(port: number, cacheTag: string, host = '127.0.0.1'): string {
+  return `${host}:${port}/${cacheTag}`;
+}
+
+export function getRegistryCacheFlags(ref: string, cacheMode: string): { cacheFrom: string; cacheTo: string } {
+  return {
+    cacheFrom: `type=registry,ref=${ref},registry.insecure=true`,
+    cacheTo: `type=registry,ref=${ref},mode=${cacheMode},registry.insecure=true`
+  };
+}
+
+export async function getContainerGateway(containerName: string): Promise<string> {
+  let output = '';
+  const result = await exec.exec('docker', [
+    'inspect', '-f', '{{.NetworkSettings.Gateway}}', containerName
+  ], {
+    ignoreReturnCode: true,
+    silent: true,
+    listeners: { stdout: (data: Buffer) => { output += data.toString(); } }
+  });
+  const gateway = output.trim();
+  if (result !== 0 || !gateway) {
+    core.warning(`Could not determine gateway for container ${containerName}, falling back to 172.17.0.1`);
+    return '172.17.0.1';
+  }
+  return gateway;
+}
+
+export async function getContainerNetworkMode(containerName: string): Promise<string> {
+  let output = '';
+  const result = await exec.exec('docker', [
+    'inspect', '-f', '{{.HostConfig.NetworkMode}}', containerName
+  ], {
+    ignoreReturnCode: true,
+    silent: true,
+    listeners: { stdout: (data: Buffer) => { output += data.toString(); } }
+  });
+  const networkMode = output.trim();
+  if (result !== 0 || !networkMode) {
+    core.warning(`Could not determine network mode for container ${containerName}, assuming bridge`);
+    return 'bridge';
+  }
+  return networkMode;
 }
 
 const PROXY_LOG_FILE = path.join(os.tmpdir(), 'boringcache-proxy.log');
@@ -135,14 +176,15 @@ async function isProxyRunning(port: number): Promise<boolean> {
 export async function startRegistryProxy(
   workspace: string,
   port: number,
-  verbose: boolean
+  verbose: boolean,
+  bindHost = '127.0.0.1'
 ): Promise<number> {
   if (!process.env.BORINGCACHE_API_TOKEN) {
     throw new Error('BORINGCACHE_API_TOKEN is required for registry proxy mode');
   }
 
   if (await isProxyRunning(port)) {
-    core.info(`Registry proxy already running on 127.0.0.1:${port}, reusing`);
+    core.info(`Registry proxy already running on port ${port}, reusing`);
     try {
       const pid = parseInt(fs.readFileSync(PROXY_PID_FILE, 'utf-8').trim(), 10);
       if (pid > 0) return pid;
@@ -150,12 +192,12 @@ export async function startRegistryProxy(
     return -1;
   }
 
-  const args = ['serve', workspace, '--host', '127.0.0.1', '--port', String(port)];
+  const args = ['docker-registry', workspace, '--host', bindHost, '--port', String(port)];
   if (verbose) {
     args.push('--verbose');
   }
 
-  core.info(`Starting registry proxy on 127.0.0.1:${port}...`);
+  core.info(`Starting registry proxy on ${bindHost}:${port}...`);
 
   const logFd = fs.openSync(PROXY_LOG_FILE, 'w');
   const child: ChildProcess = spawn('boringcache', args, {
@@ -320,7 +362,7 @@ export async function setupBuildxBuilder(
 export async function getBuilderPlatforms(builderName: string): Promise<string> {
   let output = '';
 
-  const result = await exec.exec('docker', ['buildx', 'inspect', builderName], {
+  const result = await exec.exec('docker', ['buildx', 'inspect', builderName, '--bootstrap'], {
     ignoreReturnCode: true,
     silent: true,
     listeners: {

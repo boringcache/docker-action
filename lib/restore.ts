@@ -14,6 +14,9 @@ import {
   startRegistryProxy,
   waitForProxy,
   getRegistryRef,
+  getRegistryCacheFlags,
+  getContainerGateway,
+  getContainerNetworkMode,
   setupQemuIfNeeded,
   setupBuildxBuilder,
   getBuilderPlatforms,
@@ -65,11 +68,28 @@ async function run(): Promise<void> {
     await setupQemuIfNeeded(platforms);
 
     if (useRegistryProxy) {
-      const proxyPid = await startRegistryProxy(workspace, proxyPort, verbose);
+      let proxyBindHost = '127.0.0.1';
+      let refHost = '127.0.0.1';
+
+      if (driver === 'docker-container') {
+        const containerName = `buildx_buildkit_${builderName}0`;
+        const networkMode = await getContainerNetworkMode(containerName);
+
+        if (networkMode === 'host') {
+          core.info('Buildx container uses host networking; using loopback registry ref');
+        } else {
+          proxyBindHost = '0.0.0.0';
+          refHost = await getContainerGateway(containerName);
+          core.info(`Buildx in container network "${networkMode}", proxy binding to ${proxyBindHost}, ref using gateway ${refHost}`);
+        }
+      }
+
+      const proxyPid = await startRegistryProxy(workspace, proxyPort, verbose, proxyBindHost);
       await waitForProxy(proxyPort, 20000, proxyPid);
       core.saveState('proxyPid', String(proxyPid));
 
-      const ref = getRegistryRef(proxyPort, cacheTag);
+      const ref = getRegistryRef(proxyPort, cacheTag, refHost);
+      const registryCache = getRegistryCacheFlags(ref, cacheMode);
 
       await buildDockerImage({
         dockerfile,
@@ -85,8 +105,8 @@ async function run(): Promise<void> {
         noCache,
         builder: builderName,
         cacheMode,
-        cacheFrom: `type=registry,ref=${ref}`,
-        cacheTo: `type=registry,ref=${ref},mode=${cacheMode}`
+        cacheFrom: registryCache.cacheFrom,
+        cacheTo: registryCache.cacheTo
       });
     } else {
       ensureDir(CACHE_DIR_FROM);

@@ -74,10 +74,25 @@ async function run() {
         core.setOutput('buildx-platforms', await (0, utils_1.getBuilderPlatforms)(builderName));
         await (0, utils_1.setupQemuIfNeeded)(platforms);
         if (useRegistryProxy) {
-            const proxyPid = await (0, utils_1.startRegistryProxy)(workspace, proxyPort, verbose);
+            let proxyBindHost = '127.0.0.1';
+            let refHost = '127.0.0.1';
+            if (driver === 'docker-container') {
+                const containerName = `buildx_buildkit_${builderName}0`;
+                const networkMode = await (0, utils_1.getContainerNetworkMode)(containerName);
+                if (networkMode === 'host') {
+                    core.info('Buildx container uses host networking; using loopback registry ref');
+                }
+                else {
+                    proxyBindHost = '0.0.0.0';
+                    refHost = await (0, utils_1.getContainerGateway)(containerName);
+                    core.info(`Buildx in container network "${networkMode}", proxy binding to ${proxyBindHost}, ref using gateway ${refHost}`);
+                }
+            }
+            const proxyPid = await (0, utils_1.startRegistryProxy)(workspace, proxyPort, verbose, proxyBindHost);
             await (0, utils_1.waitForProxy)(proxyPort, 20000, proxyPid);
             core.saveState('proxyPid', String(proxyPid));
-            const ref = (0, utils_1.getRegistryRef)(proxyPort, cacheTag);
+            const ref = (0, utils_1.getRegistryRef)(proxyPort, cacheTag, refHost);
+            const registryCache = (0, utils_1.getRegistryCacheFlags)(ref, cacheMode);
             await (0, utils_1.buildDockerImage)({
                 dockerfile,
                 context,
@@ -92,8 +107,8 @@ async function run() {
                 noCache,
                 builder: builderName,
                 cacheMode,
-                cacheFrom: `type=registry,ref=${ref}`,
-                cacheTo: `type=registry,ref=${ref},mode=${cacheMode}`
+                cacheFrom: registryCache.cacheFrom,
+                cacheTo: registryCache.cacheTo
             });
         }
         else {

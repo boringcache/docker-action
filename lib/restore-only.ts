@@ -9,6 +9,7 @@ import {
   startRegistryProxy,
   waitForProxy,
   getRegistryRef,
+  getRegistryCacheFlags,
   parseBoolean,
   CacheFlags
 } from './utils';
@@ -45,8 +46,9 @@ async function run(): Promise<void> {
       core.saveState('proxyPid', String(proxyPid));
 
       const ref = getRegistryRef(proxyPort, cacheTag);
-      const cacheFrom = `type=registry,ref=${ref}`;
-      const cacheTo = `type=registry,ref=${ref},mode=${cacheMode}`;
+      const registryCache = getRegistryCacheFlags(ref, cacheMode);
+      const cacheFrom = registryCache.cacheFrom;
+      const cacheTo = registryCache.cacheTo;
 
       core.setOutput('cache-tag', cacheTag);
       core.setOutput('registry-ref', ref);

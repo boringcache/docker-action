@@ -61,8 +61,9 @@ async function run() {
             await (0, utils_1.waitForProxy)(proxyPort, 20000, proxyPid);
             core.saveState('proxyPid', String(proxyPid));
             const ref = (0, utils_1.getRegistryRef)(proxyPort, cacheTag);
-            const cacheFrom = `type=registry,ref=${ref}`;
-            const cacheTo = `type=registry,ref=${ref},mode=${cacheMode}`;
+            const registryCache = (0, utils_1.getRegistryCacheFlags)(ref, cacheMode);
+            const cacheFrom = registryCache.cacheFrom;
+            const cacheTo = registryCache.cacheTo;
             core.setOutput('cache-tag', cacheTag);
             core.setOutput('registry-ref', ref);
             core.setOutput('cache-from', cacheFrom);
