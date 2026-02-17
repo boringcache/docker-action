@@ -42,34 +42,47 @@ async function run() {
         const cliVersion = core.getInput('cli-version') || 'v1.0.0';
         const verbose = (0, utils_1.parseBoolean)(core.getInput('verbose'), false);
         const exclude = core.getInput('exclude') || '';
-        // Cache tag: user-provided or default to slugified image name
-        // BoringCache is content-addressed, so no hash needed in the tag
+        const cacheBackend = core.getInput('cache-backend') || 'registry';
+        const proxyPort = parseInt(core.getInput('proxy-port') || '5000', 10);
+        const cacheMode = core.getInput('cache-mode') || 'max';
         const image = core.getInput('image') || '';
         const cacheTag = core.getInput('cache-tag') || (image ? (0, utils_1.slugify)(image) : 'docker');
         const cacheFlags = { verbose, exclude };
-        const saveCacheDir = `${cacheDir}-to`;
-        (0, utils_1.ensureDir)(cacheDir);
-        (0, utils_1.ensureDir)(saveCacheDir);
+        const useRegistryProxy = cacheBackend !== 'local';
         if (cliVersion.toLowerCase() !== 'skip') {
             await (0, utils_1.ensureBoringCache)({ version: cliVersion });
         }
-        const cacheHit = await (0, utils_1.restoreCache)(workspace, cacheTag, cacheDir, cacheFlags);
-        // Set outputs
-        core.setOutput('cache-hit', cacheHit ? 'true' : 'false');
-        core.setOutput('cache-tag', cacheTag);
-        core.setOutput('cache-dir', cacheDir);
-        core.setOutput('save-cache-dir', saveCacheDir);
-        // Save state for potential use by save action
         core.saveState('workspace', workspace);
         core.saveState('cacheTag', cacheTag);
-        core.saveState('cacheDir', saveCacheDir);
         core.saveState('verbose', verbose.toString());
         core.saveState('exclude', exclude);
-        if (cacheHit) {
-            core.notice(`Cache restored from BoringCache (tag: ${cacheTag})`);
+        if (useRegistryProxy) {
+            const proxyPid = await (0, utils_1.startRegistryProxy)(workspace, proxyPort, verbose);
+            await (0, utils_1.waitForProxy)(proxyPort);
+            core.saveState('proxyPid', String(proxyPid));
+            const ref = (0, utils_1.getRegistryRef)(proxyPort, cacheTag);
+            const cacheFrom = `type=registry,ref=${ref}`;
+            const cacheTo = `type=registry,ref=${ref},mode=${cacheMode}`;
+            core.setOutput('cache-tag', cacheTag);
+            core.setOutput('registry-ref', ref);
+            core.setOutput('cache-from', cacheFrom);
+            core.setOutput('cache-to', cacheTo);
+            core.setOutput('cache-dir', '');
+            core.setOutput('save-cache-dir', '');
+            core.notice(`Registry proxy started (ref: ${ref})`);
         }
         else {
-            core.notice(`Cache miss (tag: ${cacheTag})`);
+            const saveCacheDir = `${cacheDir}-to`;
+            (0, utils_1.ensureDir)(cacheDir);
+            (0, utils_1.ensureDir)(saveCacheDir);
+            core.saveState('cacheDir', saveCacheDir);
+            await (0, utils_1.restoreCache)(workspace, cacheTag, cacheDir, cacheFlags);
+            core.setOutput('cache-tag', cacheTag);
+            core.setOutput('cache-dir', cacheDir);
+            core.setOutput('save-cache-dir', saveCacheDir);
+            core.setOutput('cache-from', `type=local,src=${cacheDir}`);
+            core.setOutput('cache-to', `type=local,dest=${saveCacheDir},mode=${cacheMode}`);
+            core.setOutput('registry-ref', '');
         }
     }
     catch (error) {

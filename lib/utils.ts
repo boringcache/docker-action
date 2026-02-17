@@ -4,6 +4,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import * as crypto from 'crypto';
+import * as http from 'http';
+import { spawn, ChildProcess } from 'child_process';
 import { ensureBoringCache, execBoringCache as execBoringCacheCore } from '@boringcache/action-core';
 
 export { ensureBoringCache };
@@ -12,8 +14,6 @@ export const CACHE_DIR = path.join(os.tmpdir(), 'buildkit-cache');
 export const CACHE_DIR_FROM = path.join(os.tmpdir(), 'buildkit-cache-from');
 export const CACHE_DIR_TO = path.join(os.tmpdir(), 'buildkit-cache-to');
 export const METADATA_FILE = path.join(os.tmpdir(), 'docker-metadata.json');
-
-let lastOutput = '';
 
 export function parseBoolean(value: string | undefined, defaultValue = false): boolean {
   if (value === undefined || value === null || value === '') return defaultValue;
@@ -66,40 +66,7 @@ export function getWorkspace(inputWorkspace: string): string {
 }
 
 export async function execBoringCache(args: string[]): Promise<number> {
-  lastOutput = '';
-  let output = '';
-
-  const code = await execBoringCacheCore(args, {
-    silent: true,
-    listeners: {
-      stdout: (data: Buffer) => {
-        const text = data.toString();
-        output += text;
-        process.stdout.write(text);
-      },
-      stderr: (data: Buffer) => {
-        const text = data.toString();
-        output += text;
-        process.stderr.write(text);
-      }
-    }
-  });
-
-  lastOutput = output;
-  return code;
-}
-
-export function wasCacheHit(exitCode: number): boolean {
-  if (exitCode !== 0) {
-    return false;
-  }
-
-  if (!lastOutput) {
-    return true;
-  }
-
-  const missPatterns = [/Cache miss/i, /No cache entries/i, /Found 0\//i];
-  return !missPatterns.some(pattern => pattern.test(lastOutput));
+  return execBoringCacheCore(args);
 }
 
 export interface CacheFlags {
@@ -107,10 +74,10 @@ export interface CacheFlags {
   exclude?: string;
 }
 
-export async function restoreCache(workspace: string, cacheKey: string, cacheDir: string, flags: CacheFlags = {}): Promise<boolean> {
+export async function restoreCache(workspace: string, cacheKey: string, cacheDir: string, flags: CacheFlags = {}): Promise<void> {
   if (!process.env.BORINGCACHE_API_TOKEN) {
     core.notice('Skipping cache restore (BORINGCACHE_API_TOKEN not set)');
-    return false;
+    return;
   }
 
   const args = ['restore', workspace, `${cacheKey}:${cacheDir}`];
@@ -118,14 +85,7 @@ export async function restoreCache(workspace: string, cacheKey: string, cacheDir
     args.push('--verbose');
   }
 
-  const result = await execBoringCache(args);
-
-  if (wasCacheHit(result)) {
-    return true;
-  }
-
-  core.info('Cache miss');
-  return false;
+  await execBoringCache(args);
 }
 
 export async function saveCache(workspace: string, cacheKey: string, cacheDir: string, flags: CacheFlags = {}): Promise<void> {
@@ -151,6 +111,97 @@ export async function saveCache(workspace: string, cacheKey: string, cacheDir: s
   core.info('Cache saved');
 }
 
+export function getRegistryRef(port: number, cacheTag: string): string {
+  return `localhost:${port}/${cacheTag}`;
+}
+
+export async function startRegistryProxy(
+  workspace: string,
+  port: number,
+  verbose: boolean
+): Promise<number> {
+  if (!process.env.BORINGCACHE_API_TOKEN) {
+    throw new Error('BORINGCACHE_API_TOKEN is required for registry proxy mode');
+  }
+
+  const args = ['serve', workspace, '--port', String(port)];
+  if (verbose) {
+    args.push('--verbose');
+  }
+
+  core.info(`Starting registry proxy on localhost:${port}...`);
+
+  const child: ChildProcess = spawn('boringcache', args, {
+    detached: true,
+    stdio: verbose ? ['ignore', 'pipe', 'pipe'] : 'ignore',
+    env: process.env
+  });
+
+  if (verbose && child.stdout) {
+    child.stdout.on('data', (data: Buffer) => {
+      core.debug(`[proxy] ${data.toString().trim()}`);
+    });
+  }
+  if (verbose && child.stderr) {
+    child.stderr.on('data', (data: Buffer) => {
+      core.debug(`[proxy] ${data.toString().trim()}`);
+    });
+  }
+
+  child.unref();
+
+  if (!child.pid) {
+    throw new Error('Failed to start registry proxy');
+  }
+
+  core.info(`Registry proxy started (PID: ${child.pid})`);
+  return child.pid;
+}
+
+export async function waitForProxy(port: number, timeoutMs = 10000): Promise<void> {
+  const start = Date.now();
+  const interval = 200;
+
+  while (Date.now() - start < timeoutMs) {
+    try {
+      const ok = await new Promise<boolean>((resolve) => {
+        const req = http.get(`http://localhost:${port}/v2/`, (res) => {
+          resolve(res.statusCode === 200 || res.statusCode === 401);
+        });
+        req.on('error', () => resolve(false));
+        req.setTimeout(1000, () => {
+          req.destroy();
+          resolve(false);
+        });
+      });
+      if (ok) {
+        core.info('Registry proxy is ready');
+        return;
+      }
+    } catch {
+    }
+    await new Promise(resolve => setTimeout(resolve, interval));
+  }
+
+  throw new Error(`Registry proxy did not become ready within ${timeoutMs}ms`);
+}
+
+export async function stopRegistryProxy(pid: number): Promise<void> {
+  core.info(`Stopping registry proxy (PID: ${pid})...`);
+  try {
+    process.kill(pid, 'SIGTERM');
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    try {
+      process.kill(pid, 0);
+      process.kill(pid, 'SIGKILL');
+    } catch {
+    }
+    core.info('Registry proxy stopped');
+  } catch (err) {
+    core.warning(`Failed to stop registry proxy: ${(err as Error).message}`);
+  }
+}
+
 export async function setupQemuIfNeeded(platforms: string): Promise<void> {
   if (!platforms) return;
 
@@ -168,15 +219,24 @@ export async function setupQemuIfNeeded(platforms: string): Promise<void> {
 export async function setupBuildxBuilder(
   driver: string,
   driverOpts: string[],
-  buildkitdConfigInline: string
+  buildkitdConfigInline: string,
+  registryMode = false
 ): Promise<string> {
   const builderName = 'boringcache-builder';
-  core.saveState('builderName', builderName);
 
   let driverToUse = driver || 'docker-container';
   if (driverToUse === 'docker') {
     core.warning('Buildx driver "docker" does not support cache export; falling back to "docker-container".');
     driverToUse = 'docker-container';
+  }
+
+  const effectiveDriverOpts = [...driverOpts];
+  if (registryMode && driverToUse === 'docker-container') {
+    const hasNetworkOpt = effectiveDriverOpts.some(opt => opt.startsWith('network='));
+    if (!hasNetworkOpt) {
+      core.info('Adding network=host to builder for registry proxy access');
+      effectiveDriverOpts.push('network=host');
+    }
   }
 
   let configPath = '';
@@ -196,7 +256,7 @@ export async function setupBuildxBuilder(
   }
 
   const args = ['buildx', 'create', '--name', builderName, '--driver', driverToUse];
-  driverOpts.forEach(opt => {
+  effectiveDriverOpts.forEach(opt => {
     args.push('--driver-opt', opt);
   });
   if (configPath) {
@@ -245,9 +305,11 @@ export interface DockerBuildOptions {
   load: boolean;
   noCache: boolean;
   builder: string;
-  cacheDirFrom: string;
-  cacheDirTo: string;
   cacheMode: string;
+  cacheDirFrom?: string;
+  cacheDirTo?: string;
+  cacheFrom?: string;
+  cacheTo?: string;
 }
 
 export async function buildDockerImage(opts: DockerBuildOptions): Promise<void> {
@@ -292,8 +354,14 @@ export async function buildDockerImage(opts: DockerBuildOptions): Promise<void> 
     args.push('--no-cache');
   }
 
-  args.push('--cache-from', `type=local,src=${opts.cacheDirFrom}`);
-  args.push('--cache-to', `type=local,dest=${opts.cacheDirTo},mode=${opts.cacheMode}`);
+  if (opts.cacheFrom) {
+    args.push('--cache-from', opts.cacheFrom);
+    args.push('--cache-to', opts.cacheTo || opts.cacheFrom);
+  } else if (opts.cacheDirFrom) {
+    args.push('--cache-from', `type=local,src=${opts.cacheDirFrom}`);
+    args.push('--cache-to', `type=local,dest=${opts.cacheDirTo},mode=${opts.cacheMode}`);
+  }
+
   args.push('--metadata-file', METADATA_FILE);
   args.push('.');
 

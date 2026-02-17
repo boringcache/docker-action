@@ -1,4 +1,4 @@
-import { slugify, getWorkspace, parseBoolean, parseList, parseMultiline, CACHE_DIR_FROM, CACHE_DIR_TO, CACHE_DIR, buildDockerImage } from '../lib/utils';
+import { slugify, getWorkspace, parseBoolean, parseList, parseMultiline, getRegistryRef, CACHE_DIR_FROM, CACHE_DIR_TO, CACHE_DIR, buildDockerImage } from '../lib/utils';
 import * as core from '@actions/core';
 import * as exec from '@actions/exec';
 
@@ -73,6 +73,13 @@ describe('Docker Utils', () => {
     });
   });
 
+  describe('getRegistryRef', () => {
+    it('should construct registry ref from port and cache tag', () => {
+      expect(getRegistryRef(5000, 'my-cache')).toBe('localhost:5000/my-cache');
+      expect(getRegistryRef(5001, 'ghcr-io-org-app')).toBe('localhost:5001/ghcr-io-org-app');
+    });
+  });
+
   describe('cache directories', () => {
     it('should have separate from and to directories', () => {
       expect(CACHE_DIR_FROM).toContain('buildkit-cache-from');
@@ -84,7 +91,7 @@ describe('Docker Utils', () => {
   });
 
   describe('buildDockerImage', () => {
-    it('should use separate dirs for --cache-from and --cache-to', async () => {
+    it('should use type=local when cacheDirFrom/To are set', async () => {
       (exec.exec as jest.Mock).mockResolvedValue(0);
 
       await buildDockerImage({
@@ -115,7 +122,38 @@ describe('Docker Utils', () => {
       expect(args[cacheToIdx + 1]).toBe('type=local,dest=/tmp/cache-to,mode=max');
     });
 
-    it('should never use the same directory for cache-from and cache-to', async () => {
+    it('should use type=registry when cacheFrom/To strings are set', async () => {
+      (exec.exec as jest.Mock).mockResolvedValue(0);
+
+      await buildDockerImage({
+        dockerfile: 'Dockerfile',
+        context: '/workspace',
+        image: 'my-app',
+        tags: ['latest'],
+        buildArgs: [],
+        secrets: [],
+        push: false,
+        load: true,
+        noCache: false,
+        builder: 'test-builder',
+        cacheMode: 'max',
+        cacheFrom: 'type=registry,ref=localhost:5000/my-cache',
+        cacheTo: 'type=registry,ref=localhost:5000/my-cache,mode=max',
+      });
+
+      const callArgs = (exec.exec as jest.Mock).mock.calls[0];
+      const args: string[] = callArgs[1];
+
+      const cacheFromIdx = args.indexOf('--cache-from');
+      expect(cacheFromIdx).toBeGreaterThan(-1);
+      expect(args[cacheFromIdx + 1]).toBe('type=registry,ref=localhost:5000/my-cache');
+
+      const cacheToIdx = args.indexOf('--cache-to');
+      expect(cacheToIdx).toBeGreaterThan(-1);
+      expect(args[cacheToIdx + 1]).toBe('type=registry,ref=localhost:5000/my-cache,mode=max');
+    });
+
+    it('should never use the same directory for cache-from and cache-to in local mode', async () => {
       (exec.exec as jest.Mock).mockResolvedValue(0);
 
       await buildDockerImage({
@@ -142,7 +180,6 @@ describe('Docker Utils', () => {
       const fromValue = args[cacheFromIdx + 1];
       const toValue = args[cacheToIdx + 1];
 
-      // Extract paths from the type=local,src=... and type=local,dest=... values
       const fromPath = fromValue.replace('type=local,src=', '');
       const toPath = toValue.replace(/type=local,dest=([^,]+).*/, '$1');
       expect(fromPath).not.toBe(toPath);

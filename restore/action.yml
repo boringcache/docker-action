@@ -18,20 +18,44 @@ inputs:
     description: 'Local directory for BuildKit cache'
     required: false
     default: '/tmp/buildkit-cache'
+  cache-backend:
+    description: 'Cache backend: "registry" uses registry proxy, "local" uses type=local.'
+    required: false
+    default: 'registry'
+  cache-mode:
+    description: 'BuildKit cache mode (min or max).'
+    required: false
+    default: 'max'
+  proxy-port:
+    description: 'Port for the BoringCache registry proxy.'
+    required: false
+    default: '5000'
+  verbose:
+    description: 'Enable verbose CLI output for debugging'
+    required: false
+    default: 'false'
+  exclude:
+    description: 'Glob pattern to exclude files from cache'
+    required: false
+    default: ''
   cli-version:
     description: 'BoringCache CLI version to install'
     required: false
     default: ''
 
 outputs:
-  cache-hit:
-    description: 'Whether the cache was restored from BoringCache'
   cache-tag:
     description: 'The cache tag used for restore'
   cache-dir:
-    description: 'The local cache directory path (use as --cache-from src)'
+    description: 'The local cache directory path (use as --cache-from src, only set in local mode)'
   save-cache-dir:
-    description: 'The directory for BuildKit cache export (use as --cache-to dest, and pass to save action)'
+    description: 'The directory for BuildKit cache export (use as --cache-to dest, only set in local mode)'
+  registry-ref:
+    description: 'Registry proxy ref (e.g., localhost:5000/my-cache, only set in registry mode)'
+  cache-from:
+    description: 'Full --cache-from value for docker buildx build (works in both modes)'
+  cache-to:
+    description: 'Full --cache-to value for docker buildx build (works in both modes)'
 
 runs:
   using: 'node24'

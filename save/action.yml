@@ -23,6 +23,14 @@ inputs:
     description: 'BoringCache CLI version to install'
     required: false
     default: ''
+  verbose:
+    description: 'Enable verbose CLI output for debugging'
+    required: false
+    default: 'false'
+  exclude:
+    description: 'Glob pattern to exclude files from cache'
+    required: false
+    default: ''
 
 runs:
   using: 'node24'

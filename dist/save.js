@@ -39,6 +39,12 @@ const path = __importStar(require("path"));
 const utils_1 = require("./utils");
 async function run() {
     try {
+        const proxyPid = core.getState('proxyPid');
+        if (proxyPid) {
+            await (0, utils_1.stopRegistryProxy)(parseInt(proxyPid, 10));
+            core.info('Registry proxy cache sync complete');
+            return;
+        }
         const workspace = core.getState('workspace');
         const cacheDir = core.getState('cacheDir');
         const cacheTag = core.getState('cacheTag');
@@ -49,7 +55,6 @@ async function run() {
             return;
         }
         const cacheFlags = { verbose, exclude };
-        // Re-add expected PATH entries in case the post phase lost them
         const homedir = os.homedir();
         core.addPath(path.join(homedir, '.local', 'bin'));
         core.addPath(path.join(homedir, '.boringcache', 'bin'));

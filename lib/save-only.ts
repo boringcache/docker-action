@@ -6,13 +6,21 @@ import {
   slugify,
   ensureBoringCache,
   saveCache,
+  stopRegistryProxy,
   parseBoolean,
   CacheFlags
 } from './utils';
 
 async function run(): Promise<void> {
   try {
-    // Try to get values from state first (set by restore action), then fall back to inputs
+    const proxyPid = core.getState('proxyPid');
+
+    if (proxyPid) {
+      await stopRegistryProxy(parseInt(proxyPid, 10));
+      core.info('Registry proxy cache sync complete');
+      return;
+    }
+
     let workspace = core.getState('workspace') || core.getInput('workspace') || '';
     let cacheTag = core.getState('cacheTag') || core.getInput('cache-tag') || '';
     let cacheDir = core.getState('cacheDir') || core.getInput('cache-dir') || CACHE_DIR;
@@ -20,7 +28,6 @@ async function run(): Promise<void> {
     const verbose = core.getState('verbose') === 'true' || parseBoolean(core.getInput('verbose'), false);
     const exclude = core.getState('exclude') || core.getInput('exclude') || '';
 
-    // Resolve workspace
     if (!workspace) {
       workspace = process.env.BORINGCACHE_DEFAULT_WORKSPACE || '';
     }
@@ -32,14 +39,11 @@ async function run(): Promise<void> {
       workspace = `default/${workspace}`;
     }
 
-    // Generate cache tag if not provided
-    // BoringCache is content-addressed, so no hash needed in the tag
     if (!cacheTag) {
       const image = core.getInput('image') || '';
       cacheTag = image ? slugify(image) : 'docker';
     }
 
-    // Re-add expected PATH entries in case they were lost
     const homedir = os.homedir();
     core.addPath(path.join(homedir, '.local', 'bin'));
     core.addPath(path.join(homedir, '.boringcache', 'bin'));

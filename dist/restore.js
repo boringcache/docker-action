@@ -57,50 +57,71 @@ async function run() {
         const workspace = (0, utils_1.getWorkspace)(core.getInput('workspace') || '');
         const verbose = (0, utils_1.parseBoolean)(core.getInput('verbose'), false);
         const exclude = core.getInput('exclude') || '';
-        // Cache tag: user-provided or default to slugified image name
-        // BoringCache is content-addressed, so no hash needed in the tag
+        const cacheBackend = core.getInput('cache-backend') || 'registry';
+        const proxyPort = parseInt(core.getInput('proxy-port') || '5000', 10);
         const cacheTag = core.getInput('cache-tag') || (0, utils_1.slugify)(image);
         const cacheFlags = { verbose, exclude };
-        // Save state for post phase
+        const useRegistryProxy = cacheBackend !== 'local';
         core.saveState('workspace', workspace);
-        core.saveState('cacheDir', utils_1.CACHE_DIR_TO);
         core.saveState('cacheTag', cacheTag);
         core.saveState('verbose', verbose.toString());
         core.saveState('exclude', exclude);
-        (0, utils_1.ensureDir)(utils_1.CACHE_DIR_FROM);
-        (0, utils_1.ensureDir)(utils_1.CACHE_DIR_TO);
         if (cliVersion.toLowerCase() !== 'skip') {
             await (0, utils_1.ensureBoringCache)({ version: cliVersion || 'v1.0.0' });
         }
-        const builderName = await (0, utils_1.setupBuildxBuilder)(driver, driverOpts, buildkitdConfigInline);
+        const builderName = await (0, utils_1.setupBuildxBuilder)(driver, driverOpts, buildkitdConfigInline, useRegistryProxy);
         core.setOutput('buildx-name', builderName);
         core.setOutput('buildx-platforms', await (0, utils_1.getBuilderPlatforms)(builderName));
         await (0, utils_1.setupQemuIfNeeded)(platforms);
-        const cacheHit = await (0, utils_1.restoreCache)(workspace, cacheTag, utils_1.CACHE_DIR_FROM, cacheFlags);
-        core.setOutput('cache-hit', cacheHit ? 'true' : 'false');
-        await (0, utils_1.buildDockerImage)({
-            dockerfile,
-            context,
-            image,
-            tags,
-            buildArgs,
-            secrets,
-            target,
-            platforms,
-            push,
-            load,
-            noCache,
-            builder: builderName,
-            cacheDirFrom: utils_1.CACHE_DIR_FROM,
-            cacheDirTo: utils_1.CACHE_DIR_TO,
-            cacheMode
-        });
+        if (useRegistryProxy) {
+            const proxyPid = await (0, utils_1.startRegistryProxy)(workspace, proxyPort, verbose);
+            await (0, utils_1.waitForProxy)(proxyPort);
+            core.saveState('proxyPid', String(proxyPid));
+            const ref = (0, utils_1.getRegistryRef)(proxyPort, cacheTag);
+            await (0, utils_1.buildDockerImage)({
+                dockerfile,
+                context,
+                image,
+                tags,
+                buildArgs,
+                secrets,
+                target,
+                platforms,
+                push,
+                load,
+                noCache,
+                builder: builderName,
+                cacheMode,
+                cacheFrom: `type=registry,ref=${ref}`,
+                cacheTo: `type=registry,ref=${ref},mode=${cacheMode}`
+            });
+        }
+        else {
+            (0, utils_1.ensureDir)(utils_1.CACHE_DIR_FROM);
+            (0, utils_1.ensureDir)(utils_1.CACHE_DIR_TO);
+            core.saveState('cacheDir', utils_1.CACHE_DIR_TO);
+            await (0, utils_1.restoreCache)(workspace, cacheTag, utils_1.CACHE_DIR_FROM, cacheFlags);
+            await (0, utils_1.buildDockerImage)({
+                dockerfile,
+                context,
+                image,
+                tags,
+                buildArgs,
+                secrets,
+                target,
+                platforms,
+                push,
+                load,
+                noCache,
+                builder: builderName,
+                cacheMode,
+                cacheDirFrom: utils_1.CACHE_DIR_FROM,
+                cacheDirTo: utils_1.CACHE_DIR_TO
+            });
+        }
         const { imageId, digest } = (0, utils_1.readMetadata)();
         core.setOutput('image-id', imageId);
         core.setOutput('digest', digest);
-        // Compatibility outputs
-        core.setOutput('buildx-name', 'default');
-        core.setOutput('buildx-platforms', platforms || '');
     }
     catch (error) {
         if (error instanceof Error) {
