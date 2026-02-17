@@ -45515,39 +45515,24 @@ async function saveCache(workspace, cacheKey, cacheDir, flags = {}) {
 function getRegistryRef(port, cacheTag) {
     return `localhost:${port}/${cacheTag}`;
 }
-let proxyLogs = [];
+const PROXY_LOG_FILE = path.join(os.tmpdir(), 'boringcache-proxy.log');
 async function startRegistryProxy(workspace, port, verbose) {
     if (!process.env.BORINGCACHE_API_TOKEN) {
         throw new Error('BORINGCACHE_API_TOKEN is required for registry proxy mode');
     }
-    proxyLogs = [];
     const args = ['serve', workspace, '--host', '127.0.0.1', '--port', String(port)];
     if (verbose) {
         args.push('--verbose');
     }
     core.info(`Starting registry proxy on 127.0.0.1:${port}...`);
+    const logFd = fs.openSync(PROXY_LOG_FILE, 'w');
     const child = (0, child_process_1.spawn)('boringcache', args, {
         detached: true,
-        stdio: ['ignore', 'pipe', 'pipe'],
+        stdio: ['ignore', logFd, logFd],
         env: process.env
     });
-    if (child.stdout) {
-        child.stdout.on('data', (data) => {
-            const line = data.toString().trim();
-            proxyLogs.push(line);
-            if (verbose)
-                core.info(`[proxy] ${line}`);
-        });
-    }
-    if (child.stderr) {
-        child.stderr.on('data', (data) => {
-            const line = data.toString().trim();
-            proxyLogs.push(line);
-            if (verbose)
-                core.info(`[proxy] ${line}`);
-        });
-    }
     child.unref();
+    fs.closeSync(logFd);
     if (!child.pid) {
         throw new Error('Failed to start registry proxy');
     }
@@ -45563,12 +45548,20 @@ function isProcessAlive(pid) {
         return false;
     }
 }
+function readProxyLogs() {
+    try {
+        return fs.readFileSync(PROXY_LOG_FILE, 'utf-8').trim();
+    }
+    catch {
+        return '';
+    }
+}
 async function waitForProxy(port, timeoutMs = 20000, pid) {
     const start = Date.now();
     const interval = 500;
     while (Date.now() - start < timeoutMs) {
         if (pid && !isProcessAlive(pid)) {
-            const logs = proxyLogs.join('\n');
+            const logs = readProxyLogs();
             throw new Error(`Registry proxy exited before becoming ready${logs ? `:\n${logs}` : ''}`);
         }
         try {
@@ -45591,7 +45584,7 @@ async function waitForProxy(port, timeoutMs = 20000, pid) {
         }
         await new Promise(resolve => setTimeout(resolve, interval));
     }
-    const logs = proxyLogs.join('\n');
+    const logs = readProxyLogs();
     throw new Error(`Registry proxy did not become ready within ${timeoutMs}ms${logs ? `:\n${logs}` : ''}`);
 }
 async function stopRegistryProxy(pid) {
