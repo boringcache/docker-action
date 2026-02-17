@@ -5,6 +5,17 @@ on:
     branches: [main]
     paths:
       - "action.yml"
+      - "restore/action.yml"
+      - "save/action.yml"
+      - "lib/**"
+      - "dist/**"
+      - "restore/dist/**"
+      - "save/dist/**"
+      - "tests/**"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig.json"
+      - "jest.config.js"
       - ".github/workflows/**"
   pull_request:
     branches: [main]
