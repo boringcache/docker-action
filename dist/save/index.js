@@ -41796,7 +41796,7 @@ async function saveCache(workspace, cacheKey, cacheDir, flags = {}) {
     core.info('Cache saved');
 }
 function getRegistryRef(port, cacheTag) {
-    return `localhost:${port}/${cacheTag}`;
+    return `127.0.0.1:${port}/${cacheTag}`;
 }
 const PROXY_LOG_FILE = path.join(os.tmpdir(), 'boringcache-proxy.log');
 async function startRegistryProxy(workspace, port, verbose) {

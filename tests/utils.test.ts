@@ -75,8 +75,8 @@ describe('Docker Utils', () => {
 
   describe('getRegistryRef', () => {
     it('should construct registry ref from port and cache tag', () => {
-      expect(getRegistryRef(5000, 'my-cache')).toBe('localhost:5000/my-cache');
-      expect(getRegistryRef(5001, 'ghcr-io-org-app')).toBe('localhost:5001/ghcr-io-org-app');
+      expect(getRegistryRef(5000, 'my-cache')).toBe('127.0.0.1:5000/my-cache');
+      expect(getRegistryRef(5001, 'ghcr-io-org-app')).toBe('127.0.0.1:5001/ghcr-io-org-app');
     });
   });
 
