@@ -116,6 +116,21 @@ export function getRegistryRef(port: number, cacheTag: string): string {
 }
 
 const PROXY_LOG_FILE = path.join(os.tmpdir(), 'boringcache-proxy.log');
+const PROXY_PID_FILE = path.join(os.tmpdir(), 'boringcache-proxy.pid');
+
+async function isProxyRunning(port: number): Promise<boolean> {
+  try {
+    return await new Promise<boolean>((resolve) => {
+      const req = http.get(`http://127.0.0.1:${port}/v2/`, (res) => {
+        resolve(res.statusCode === 200 || res.statusCode === 401);
+      });
+      req.on('error', () => resolve(false));
+      req.setTimeout(1000, () => { req.destroy(); resolve(false); });
+    });
+  } catch {
+    return false;
+  }
+}
 
 export async function startRegistryProxy(
   workspace: string,
@@ -124,6 +139,15 @@ export async function startRegistryProxy(
 ): Promise<number> {
   if (!process.env.BORINGCACHE_API_TOKEN) {
     throw new Error('BORINGCACHE_API_TOKEN is required for registry proxy mode');
+  }
+
+  if (await isProxyRunning(port)) {
+    core.info(`Registry proxy already running on 127.0.0.1:${port}, reusing`);
+    try {
+      const pid = parseInt(fs.readFileSync(PROXY_PID_FILE, 'utf-8').trim(), 10);
+      if (pid > 0) return pid;
+    } catch {}
+    return -1;
   }
 
   const args = ['serve', workspace, '--host', '127.0.0.1', '--port', String(port)];
@@ -147,6 +171,7 @@ export async function startRegistryProxy(
     throw new Error('Failed to start registry proxy');
   }
 
+  fs.writeFileSync(PROXY_PID_FILE, String(child.pid));
   core.info(`Registry proxy started (PID: ${child.pid})`);
   return child.pid;
 }
@@ -203,6 +228,10 @@ export async function waitForProxy(port: number, timeoutMs = 20000, pid?: number
 }
 
 export async function stopRegistryProxy(pid: number): Promise<void> {
+  if (pid <= 0) {
+    core.info('No proxy PID to stop (was reused from another invocation)');
+    return;
+  }
   core.info(`Stopping registry proxy (PID: ${pid})...`);
   try {
     process.kill(pid, 'SIGTERM');

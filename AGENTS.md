@@ -18,9 +18,15 @@ Builds Docker images with BuildKit and caches build layers via BoringCache. Hand
 
 ## How It Works
 
-1. **Restore phase**: Downloads BuildKit layer cache from BoringCache
-2. **Build**: Runs `docker buildx build` with `--cache-from` and `--cache-to` pointing to local cache dir
-3. **Save phase**: Uploads layer cache to BoringCache
+Default mode (`cache-backend: registry`):
+1. **Restore phase**: Starts a local OCI registry proxy (`boringcache serve`) for lazy layer resolution
+2. **Build**: Runs `docker buildx build` with `--cache-from type=registry,ref=127.0.0.1:5000/<tag>` and `--cache-to type=registry,ref=127.0.0.1:5000/<tag>,mode=max`
+3. **Save phase**: Stops the registry proxy (writes happen during build via proxy)
+
+Local mode (`cache-backend: local`):
+1. **Restore phase**: Downloads all cache blobs from BoringCache to local dir
+2. **Build**: Runs `docker buildx build` with `type=local` cache flags
+3. **Save phase**: Uploads updated cache blobs to BoringCache
 
 ## Key Features
 
@@ -45,20 +51,25 @@ Builds Docker images with BuildKit and caches build layers via BoringCache. Hand
 
 | Output | Description |
 |--------|-------------|
-| `cache-hit` | `true` if cache was restored |
-| `cache-dir` | Path to local cache directory |
-| `image-digest` | Built image digest |
+| `image-id` | Image ID of the built image |
+| `digest` | Image digest |
+| `buildx-name` | Name of the buildx builder instance |
+| `buildx-platforms` | Available platforms for the builder |
 
 ## Separate Actions
 
-For advanced control:
+For advanced control (uses registry proxy by default):
 ```yaml
 - uses: boringcache/docker/restore@v1
   id: cache
   with:
     workspace: my-org/my-project
 
-- run: docker buildx build --cache-from=type=local,src=${{ steps.cache.outputs.cache-dir }} ...
+- run: |
+    docker buildx build \
+      --cache-from ${{ steps.cache.outputs.cache-from }} \
+      --cache-to ${{ steps.cache.outputs.cache-to }} \
+      --load -t my-app:latest .
 
 - uses: boringcache/docker/save@v1
   with:

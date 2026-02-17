@@ -83,7 +83,7 @@ inputs:
     required: false
     default: 'registry'
   proxy-port:
-    description: 'Port for the BoringCache registry proxy (only used with cache-backend: boringcache).'
+    description: 'Port for the BoringCache registry proxy (only used with cache-backend: registry).'
     required: false
     default: '5000'
   verbose:

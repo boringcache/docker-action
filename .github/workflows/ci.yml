@@ -134,6 +134,7 @@ jobs:
           context: test-app
           cache-tag: cache-restore-test-${{ github.run_id }}
 
-      - name: Verify cache was used
+      - name: Verify second build completed
         run: |
-          echo "Cache hit: ${{ steps.cached-build.outputs.cache-hit }}"
+          echo "Image ID: ${{ steps.cached-build.outputs.image-id }}"
+          echo "Digest: ${{ steps.cached-build.outputs.digest }}"

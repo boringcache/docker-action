@@ -25,17 +25,14 @@ Cache is automatically restored before build and saved after.
 
 ## Mental model
 
-This action manages a local BuildKit cache directory and a BoringCache tag.
-
-- It restores the cache into a local directory before the build.
-- It runs `docker buildx` with cache import/export.
-- It saves the updated cache back to BoringCache in a post step.
+By default, this action runs a local OCI registry proxy (`boringcache serve`) that BuildKit talks to via `type=registry` cache flags. Layers are fetched lazily on cache hit and pushed through the proxy during the build — no bulk restore/save steps needed.
 
 You still control your Dockerfile, build args, and image tags.
 
 Notes:
 - If `platforms` is set, QEMU is installed via `tonistiigi/binfmt`.
-- A `boringcache-builder` (docker-container driver) is created for cache export/import.
+- A `boringcache-builder` (docker-container driver with `network=host`) is created for cache export/import.
+- Set `cache-backend: local` to fall back to the older bulk restore/save flow with `type=local` cache flags.
 - For direct `buildctl` usage, use `boringcache/buildkit-action` instead.
 
 ## Common patterns
@@ -63,8 +60,8 @@ Notes:
 - name: Build with docker buildx
   run: |
     docker buildx build \
-      --cache-from=type=local,src=${{ steps.cache.outputs.cache-dir }} \
-      --cache-to=type=local,dest=${{ steps.cache.outputs.cache-dir }},mode=max \
+      --cache-from ${{ steps.cache.outputs.cache-from }} \
+      --cache-to ${{ steps.cache.outputs.cache-to }} \
       --load \
       -t my-app:latest .
 
@@ -72,7 +69,6 @@ Notes:
   with:
     workspace: my-org/my-project
     cache-tag: ${{ steps.cache.outputs.cache-tag }}
-    cache-dir: ${{ steps.cache.outputs.cache-dir }}
 ```
 
 ### Push to registry
@@ -203,6 +199,10 @@ COPY . .
 | `driver` | No | `docker-container` | Buildx driver. |
 | `driver-opts` | No | - | Driver options (newline-separated). |
 | `buildkitd-config-inline` | No | - | Inline BuildKit daemon config (TOML). |
+| `cache-backend` | No | `registry` | Cache backend: `registry` (lazy proxy) or `local` (bulk restore/save). |
+| `proxy-port` | No | `5000` | Port for the BoringCache registry proxy. |
+| `verbose` | No | `false` | Enable verbose CLI output. |
+| `exclude` | No | - | Glob pattern to exclude files from cache. |
 
 ## Outputs
 
@@ -210,7 +210,6 @@ COPY . .
 |--------|-------------|
 | `image-id` | Image ID |
 | `digest` | Image digest |
-| `cache-hit` | Whether cache was restored |
 | `buildx-name` | Name of the buildx builder |
 | `buildx-platforms` | Available platforms |
 
