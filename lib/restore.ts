@@ -59,7 +59,7 @@ async function run(): Promise<void> {
     core.saveState('verbose', verbose.toString());
     core.saveState('exclude', exclude);
     if (cliVersion.toLowerCase() !== 'skip') {
-      await ensureBoringCache({ version: cliVersion || 'v1.0.1' });
+      await ensureBoringCache({ version: cliVersion || 'v1.0.2' });
     }
 
     const builderName = await setupBuildxBuilder(driver, driverOpts, buildkitdConfigInline, useRegistryProxy);
