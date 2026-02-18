@@ -18,7 +18,7 @@ async function run(): Promise<void> {
   try {
     const workspace = getWorkspace(core.getInput('workspace', { required: true }));
     const cacheDir = core.getInput('cache-dir') || CACHE_DIR;
-    const cliVersion = core.getInput('cli-version') || 'v1.0.0';
+    const cliVersion = core.getInput('cli-version') || 'v1.0.1';
     const verbose = parseBoolean(core.getInput('verbose'), false);
     const exclude = core.getInput('exclude') || '';
     const cacheBackend = core.getInput('cache-backend') || 'registry';

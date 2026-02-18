@@ -1,6 +1,6 @@
 {
   "name": "boringcache-docker",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Build Docker images with BuildKit local cache backend and BoringCache.",
   "main": "dist/restore/index.js",
   "scripts": {

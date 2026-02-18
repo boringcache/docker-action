@@ -41615,7 +41615,7 @@ async function run() {
     try {
         const workspace = (0, utils_1.getWorkspace)(core.getInput('workspace', { required: true }));
         const cacheDir = core.getInput('cache-dir') || utils_1.CACHE_DIR;
-        const cliVersion = core.getInput('cli-version') || 'v1.0.0';
+        const cliVersion = core.getInput('cli-version') || 'v1.0.1';
         const verbose = (0, utils_1.parseBoolean)(core.getInput('verbose'), false);
         const exclude = core.getInput('exclude') || '';
         const cacheBackend = core.getInput('cache-backend') || 'registry';
