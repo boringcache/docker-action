@@ -18,7 +18,10 @@ async function run(): Promise<void> {
   try {
     const workspace = getWorkspace(core.getInput('workspace', { required: true }));
     const cacheDir = core.getInput('cache-dir') || CACHE_DIR;
-    const cliVersion = core.getInput('cli-version') || 'v1.0.2';
+    const cliVersion = core.getInput('cli-version') || 'v1.0.3';
+    const registryTag = core.getInput('registry-tag') || '';
+    const proxyNoGit = parseBoolean(core.getInput('proxy-no-git'), false);
+    const proxyNoPlatform = parseBoolean(core.getInput('proxy-no-platform'), false);
     const verbose = parseBoolean(core.getInput('verbose'), false);
     const exclude = core.getInput('exclude') || '';
     const cacheBackend = core.getInput('cache-backend') || 'registry';
@@ -37,11 +40,18 @@ async function run(): Promise<void> {
 
     core.saveState('workspace', workspace);
     core.saveState('cacheTag', cacheTag);
+    core.saveState('registryTag', registryTag);
+    core.saveState('proxyNoGit', proxyNoGit.toString());
+    core.saveState('proxyNoPlatform', proxyNoPlatform.toString());
     core.saveState('verbose', verbose.toString());
     core.saveState('exclude', exclude);
 
     if (useRegistryProxy) {
-      const proxyPid = await startRegistryProxy(workspace, proxyPort, verbose);
+      const proxyPid = await startRegistryProxy(workspace, proxyPort, verbose, '127.0.0.1', {
+        registryTag,
+        noGit: proxyNoGit,
+        noPlatform: proxyNoPlatform
+      });
       await waitForProxy(proxyPort, 20000, proxyPid);
       core.saveState('proxyPid', String(proxyPid));
 

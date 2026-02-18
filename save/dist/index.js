@@ -41624,7 +41624,7 @@ async function run() {
         let workspace = core.getState('workspace') || core.getInput('workspace') || '';
         let cacheTag = core.getState('cacheTag') || core.getInput('cache-tag') || '';
         let cacheDir = core.getState('cacheDir') || core.getInput('cache-dir') || utils_1.CACHE_DIR;
-        const cliVersion = core.getInput('cli-version') || 'v1.0.2';
+        const cliVersion = core.getInput('cli-version') || 'v1.0.3';
         const verbose = core.getState('verbose') === 'true' || (0, utils_1.parseBoolean)(core.getInput('verbose'), false);
         const exclude = core.getState('exclude') || core.getInput('exclude') || '';
         if (!workspace) {
@@ -41869,7 +41869,7 @@ async function isProxyRunning(port) {
         return false;
     }
 }
-async function startRegistryProxy(workspace, port, verbose, bindHost = '127.0.0.1') {
+async function startRegistryProxy(workspace, port, verbose, bindHost = '127.0.0.1', options = {}) {
     if (!process.env.BORINGCACHE_API_TOKEN) {
         throw new Error('BORINGCACHE_API_TOKEN is required for registry proxy mode');
     }
@@ -41883,7 +41883,18 @@ async function startRegistryProxy(workspace, port, verbose, bindHost = '127.0.0.
         catch { }
         return -1;
     }
-    const args = ['docker-registry', workspace, '--host', bindHost, '--port', String(port)];
+    const args = ['docker-registry', workspace];
+    const registryTag = (options.registryTag || '').trim();
+    if (registryTag) {
+        args.push(registryTag);
+    }
+    if (options.noGit) {
+        args.push('--no-git');
+    }
+    if (options.noPlatform) {
+        args.push('--no-platform');
+    }
+    args.push('--host', bindHost, '--port', String(port));
     if (verbose) {
         args.push('--verbose');
     }

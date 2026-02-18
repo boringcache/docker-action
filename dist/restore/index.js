@@ -41631,6 +41631,9 @@ async function run() {
         const driverOpts = (0, utils_1.parseMultiline)(core.getInput('driver-opts') || '');
         const buildkitdConfigInline = core.getInput('buildkitd-config-inline') || '';
         const workspace = (0, utils_1.getWorkspace)(core.getInput('workspace') || '');
+        const registryTag = core.getInput('registry-tag') || '';
+        const proxyNoGit = (0, utils_1.parseBoolean)(core.getInput('proxy-no-git'), false);
+        const proxyNoPlatform = (0, utils_1.parseBoolean)(core.getInput('proxy-no-platform'), false);
         const verbose = (0, utils_1.parseBoolean)(core.getInput('verbose'), false);
         const exclude = core.getInput('exclude') || '';
         const cacheBackend = core.getInput('cache-backend') || 'registry';
@@ -41640,10 +41643,13 @@ async function run() {
         const useRegistryProxy = cacheBackend !== 'local';
         core.saveState('workspace', workspace);
         core.saveState('cacheTag', cacheTag);
+        core.saveState('registryTag', registryTag);
+        core.saveState('proxyNoGit', proxyNoGit.toString());
+        core.saveState('proxyNoPlatform', proxyNoPlatform.toString());
         core.saveState('verbose', verbose.toString());
         core.saveState('exclude', exclude);
         if (cliVersion.toLowerCase() !== 'skip') {
-            await (0, utils_1.ensureBoringCache)({ version: cliVersion || 'v1.0.2' });
+            await (0, utils_1.ensureBoringCache)({ version: cliVersion || 'v1.0.3' });
         }
         const builderName = await (0, utils_1.setupBuildxBuilder)(driver, driverOpts, buildkitdConfigInline, useRegistryProxy);
         core.setOutput('buildx-name', builderName);
@@ -41664,7 +41670,11 @@ async function run() {
                     core.info(`Buildx in container network "${networkMode}", proxy binding to ${proxyBindHost}, ref using gateway ${refHost}`);
                 }
             }
-            const proxyPid = await (0, utils_1.startRegistryProxy)(workspace, proxyPort, verbose, proxyBindHost);
+            const proxyPid = await (0, utils_1.startRegistryProxy)(workspace, proxyPort, verbose, proxyBindHost, {
+                registryTag,
+                noGit: proxyNoGit,
+                noPlatform: proxyNoPlatform
+            });
             await (0, utils_1.waitForProxy)(proxyPort, 20000, proxyPid);
             core.saveState('proxyPid', String(proxyPid));
             const ref = (0, utils_1.getRegistryRef)(proxyPort, cacheTag, refHost);
@@ -41932,7 +41942,7 @@ async function isProxyRunning(port) {
         return false;
     }
 }
-async function startRegistryProxy(workspace, port, verbose, bindHost = '127.0.0.1') {
+async function startRegistryProxy(workspace, port, verbose, bindHost = '127.0.0.1', options = {}) {
     if (!process.env.BORINGCACHE_API_TOKEN) {
         throw new Error('BORINGCACHE_API_TOKEN is required for registry proxy mode');
     }
@@ -41946,7 +41956,18 @@ async function startRegistryProxy(workspace, port, verbose, bindHost = '127.0.0.
         catch { }
         return -1;
     }
-    const args = ['docker-registry', workspace, '--host', bindHost, '--port', String(port)];
+    const args = ['docker-registry', workspace];
+    const registryTag = (options.registryTag || '').trim();
+    if (registryTag) {
+        args.push(registryTag);
+    }
+    if (options.noGit) {
+        args.push('--no-git');
+    }
+    if (options.noPlatform) {
+        args.push('--no-platform');
+    }
+    args.push('--host', bindHost, '--port', String(port));
     if (verbose) {
         args.push('--verbose');
     }

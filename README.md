@@ -194,13 +194,16 @@ COPY . .
 | `no-cache` | No | `false` | Build without cache. |
 | `cache-mode` | No | `max` | BuildKit cache mode (`min` or `max`). |
 | `cache-tag` | No | slugified image name | Cache tag for BoringCache. |
-| `cli-version` | No | `v1.0.2` | BoringCache CLI version. Set to `skip` to disable installation. |
+| `cli-version` | No | `v1.0.3` | BoringCache CLI version. Set to `skip` to disable installation. |
 | `buildx-version` | No | - | Buildx version to use (e.g., `v0.12.0`, `latest`). |
 | `driver` | No | `docker-container` | Buildx driver. |
 | `driver-opts` | No | - | Driver options (newline-separated). |
 | `buildkitd-config-inline` | No | - | Inline BuildKit daemon config (TOML). |
 | `cache-backend` | No | `registry` | Cache backend: `registry` (lazy proxy) or `local` (bulk restore/save). |
 | `proxy-port` | No | `5000` | Port for the BoringCache registry proxy. |
+| `registry-tag` | No | - | Optional human-readable alias tag passed to `boringcache docker-registry`. |
+| `proxy-no-git` | No | `false` | Pass `--no-git` to `boringcache docker-registry`. |
+| `proxy-no-platform` | No | `false` | Pass `--no-platform` to `boringcache docker-registry`. |
 | `verbose` | No | `false` | Enable verbose CLI output. |
 | `exclude` | No | - | Glob pattern to exclude files from cache. |
 

@@ -30,6 +30,18 @@ inputs:
     description: 'Port for the BoringCache registry proxy.'
     required: false
     default: '5000'
+  registry-tag:
+    description: 'Optional human-readable tag alias passed to `boringcache docker-registry`.'
+    required: false
+    default: ''
+  proxy-no-git:
+    description: 'Pass `--no-git` to `boringcache docker-registry`.'
+    required: false
+    default: 'false'
+  proxy-no-platform:
+    description: 'Pass `--no-platform` to `boringcache docker-registry`.'
+    required: false
+    default: 'false'
   verbose:
     description: 'Enable verbose CLI output for debugging'
     required: false

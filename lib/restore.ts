@@ -45,6 +45,9 @@ async function run(): Promise<void> {
     const buildkitdConfigInline = core.getInput('buildkitd-config-inline') || '';
 
     const workspace = getWorkspace(core.getInput('workspace') || '');
+    const registryTag = core.getInput('registry-tag') || '';
+    const proxyNoGit = parseBoolean(core.getInput('proxy-no-git'), false);
+    const proxyNoPlatform = parseBoolean(core.getInput('proxy-no-platform'), false);
     const verbose = parseBoolean(core.getInput('verbose'), false);
     const exclude = core.getInput('exclude') || '';
     const cacheBackend = core.getInput('cache-backend') || 'registry';
@@ -56,10 +59,13 @@ async function run(): Promise<void> {
 
     core.saveState('workspace', workspace);
     core.saveState('cacheTag', cacheTag);
+    core.saveState('registryTag', registryTag);
+    core.saveState('proxyNoGit', proxyNoGit.toString());
+    core.saveState('proxyNoPlatform', proxyNoPlatform.toString());
     core.saveState('verbose', verbose.toString());
     core.saveState('exclude', exclude);
     if (cliVersion.toLowerCase() !== 'skip') {
-      await ensureBoringCache({ version: cliVersion || 'v1.0.2' });
+      await ensureBoringCache({ version: cliVersion || 'v1.0.3' });
     }
 
     const builderName = await setupBuildxBuilder(driver, driverOpts, buildkitdConfigInline, useRegistryProxy);
@@ -84,7 +90,11 @@ async function run(): Promise<void> {
         }
       }
 
-      const proxyPid = await startRegistryProxy(workspace, proxyPort, verbose, proxyBindHost);
+      const proxyPid = await startRegistryProxy(workspace, proxyPort, verbose, proxyBindHost, {
+        registryTag,
+        noGit: proxyNoGit,
+        noPlatform: proxyNoPlatform
+      });
       await waitForProxy(proxyPort, 20000, proxyPid);
       core.saveState('proxyPid', String(proxyPid));
 

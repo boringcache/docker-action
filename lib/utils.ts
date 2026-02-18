@@ -177,7 +177,8 @@ export async function startRegistryProxy(
   workspace: string,
   port: number,
   verbose: boolean,
-  bindHost = '127.0.0.1'
+  bindHost = '127.0.0.1',
+  options: { registryTag?: string; noGit?: boolean; noPlatform?: boolean } = {}
 ): Promise<number> {
   if (!process.env.BORINGCACHE_API_TOKEN) {
     throw new Error('BORINGCACHE_API_TOKEN is required for registry proxy mode');
@@ -192,7 +193,18 @@ export async function startRegistryProxy(
     return -1;
   }
 
-  const args = ['docker-registry', workspace, '--host', bindHost, '--port', String(port)];
+  const args = ['docker-registry', workspace];
+  const registryTag = (options.registryTag || '').trim();
+  if (registryTag) {
+    args.push(registryTag);
+  }
+  if (options.noGit) {
+    args.push('--no-git');
+  }
+  if (options.noPlatform) {
+    args.push('--no-platform');
+  }
+  args.push('--host', bindHost, '--port', String(port));
   if (verbose) {
     args.push('--verbose');
   }

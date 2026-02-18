@@ -6,7 +6,7 @@ inputs:
   cli-version:
     description: 'BoringCache CLI version (e.g., v1.0.0). Set to "skip" to disable automatic CLI setup.'
     required: false
-    default: 'v1.0.2'
+    default: 'v1.0.3'
   context:
     description: 'Docker build context path.'
     required: false
@@ -86,6 +86,18 @@ inputs:
     description: 'Port for the BoringCache registry proxy (only used with cache-backend: registry).'
     required: false
     default: '5000'
+  registry-tag:
+    description: 'Optional human-readable tag alias passed to `boringcache docker-registry`.'
+    required: false
+    default: ''
+  proxy-no-git:
+    description: 'Pass `--no-git` to `boringcache docker-registry`.'
+    required: false
+    default: 'false'
+  proxy-no-platform:
+    description: 'Pass `--no-platform` to `boringcache docker-registry`.'
+    required: false
+    default: 'false'
   verbose:
     description: 'Enable verbose CLI output for debugging'
     required: false
