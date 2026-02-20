@@ -65,7 +65,7 @@ async function run(): Promise<void> {
     core.saveState('verbose', verbose.toString());
     core.saveState('exclude', exclude);
     if (cliVersion.toLowerCase() !== 'skip') {
-      await ensureBoringCache({ version: cliVersion || 'v1.1.1' });
+      await ensureBoringCache({ version: cliVersion || 'v1.2.0' });
     }
 
     const builderName = await setupBuildxBuilder(driver, driverOpts, buildkitdConfigInline, useRegistryProxy);
@@ -90,13 +90,19 @@ async function run(): Promise<void> {
         }
       }
 
-      const proxyPid = await startRegistryProxy(workspace, proxyPort, verbose, proxyBindHost, {
-        registryTag,
+      const effectiveTag = registryTag || cacheTag;
+      const proxy = await startRegistryProxy({
+        command: 'docker-registry',
+        workspace,
+        tag: effectiveTag,
+        host: proxyBindHost,
+        port: proxyPort,
         noGit: proxyNoGit,
-        noPlatform: proxyNoPlatform
+        noPlatform: proxyNoPlatform,
+        verbose,
       });
-      await waitForProxy(proxyPort, 20000, proxyPid);
-      core.saveState('proxyPid', String(proxyPid));
+      await waitForProxy(proxy.port, 20000, proxy.pid);
+      core.saveState('proxyPid', String(proxy.pid));
 
       const ref = getRegistryRef(proxyPort, cacheTag, refHost);
       const registryCache = getRegistryCacheFlags(ref, cacheMode);

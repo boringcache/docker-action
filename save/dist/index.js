@@ -8592,13 +8592,432 @@ exports.AbortSignal = AbortSignal;
 "use strict";
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.getToolCacheInfo = exports.isCliAvailable = exports.execBoringCache = exports.ensureBoringCache = void 0;
+exports.findAvailablePort = exports.stopRegistryProxy = exports.waitForProxy = exports.startRegistryProxy = exports.convertCacheFormatToEntries = exports.getInputsWorkspace = exports.getPlatformSuffix = exports.parseEntries = exports.resolvePaths = exports.resolvePath = exports.validateInputs = exports.getCacheConfig = exports.pathExists = exports.getCacheTagPrefix = exports.getWorkspace = exports.getToolCacheInfo = exports.isCliAvailable = exports.execBoringCache = exports.ensureBoringCache = void 0;
 var setup_1 = __nccwpck_require__(1576);
 Object.defineProperty(exports, "ensureBoringCache", ({ enumerable: true, get: function () { return setup_1.ensureBoringCache; } }));
 Object.defineProperty(exports, "execBoringCache", ({ enumerable: true, get: function () { return setup_1.execBoringCache; } }));
 Object.defineProperty(exports, "isCliAvailable", ({ enumerable: true, get: function () { return setup_1.isCliAvailable; } }));
 Object.defineProperty(exports, "getToolCacheInfo", ({ enumerable: true, get: function () { return setup_1.getToolCacheInfo; } }));
-//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiaW5kZXguanMiLCJzb3VyY2VSb290IjoiIiwic291cmNlcyI6WyIuLi9saWIvaW5kZXgudHMiXSwibmFtZXMiOltdLCJtYXBwaW5ncyI6Ijs7O0FBQUEsaUNBT2lCO0FBTmYsMEdBQUEsaUJBQWlCLE9BQUE7QUFDakIsd0dBQUEsZUFBZSxPQUFBO0FBQ2YsdUdBQUEsY0FBYyxPQUFBO0FBQ2QseUdBQUEsZ0JBQWdCLE9BQUEifQ==
+var workspace_1 = __nccwpck_require__(8084);
+Object.defineProperty(exports, "getWorkspace", ({ enumerable: true, get: function () { return workspace_1.getWorkspace; } }));
+Object.defineProperty(exports, "getCacheTagPrefix", ({ enumerable: true, get: function () { return workspace_1.getCacheTagPrefix; } }));
+Object.defineProperty(exports, "pathExists", ({ enumerable: true, get: function () { return workspace_1.pathExists; } }));
+var inputs_1 = __nccwpck_require__(4696);
+Object.defineProperty(exports, "getCacheConfig", ({ enumerable: true, get: function () { return inputs_1.getCacheConfig; } }));
+Object.defineProperty(exports, "validateInputs", ({ enumerable: true, get: function () { return inputs_1.validateInputs; } }));
+Object.defineProperty(exports, "resolvePath", ({ enumerable: true, get: function () { return inputs_1.resolvePath; } }));
+Object.defineProperty(exports, "resolvePaths", ({ enumerable: true, get: function () { return inputs_1.resolvePaths; } }));
+Object.defineProperty(exports, "parseEntries", ({ enumerable: true, get: function () { return inputs_1.parseEntries; } }));
+Object.defineProperty(exports, "getPlatformSuffix", ({ enumerable: true, get: function () { return inputs_1.getPlatformSuffix; } }));
+Object.defineProperty(exports, "getInputsWorkspace", ({ enumerable: true, get: function () { return inputs_1.getInputsWorkspace; } }));
+Object.defineProperty(exports, "convertCacheFormatToEntries", ({ enumerable: true, get: function () { return inputs_1.convertCacheFormatToEntries; } }));
+var proxy_1 = __nccwpck_require__(4821);
+Object.defineProperty(exports, "startRegistryProxy", ({ enumerable: true, get: function () { return proxy_1.startRegistryProxy; } }));
+Object.defineProperty(exports, "waitForProxy", ({ enumerable: true, get: function () { return proxy_1.waitForProxy; } }));
+Object.defineProperty(exports, "stopRegistryProxy", ({ enumerable: true, get: function () { return proxy_1.stopRegistryProxy; } }));
+Object.defineProperty(exports, "findAvailablePort", ({ enumerable: true, get: function () { return proxy_1.findAvailablePort; } }));
+//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiaW5kZXguanMiLCJzb3VyY2VSb290IjoiIiwic291cmNlcyI6WyIuLi9saWIvaW5kZXgudHMiXSwibmFtZXMiOltdLCJtYXBwaW5ncyI6Ijs7O0FBQUEsaUNBT2lCO0FBTmYsMEdBQUEsaUJBQWlCLE9BQUE7QUFDakIsd0dBQUEsZUFBZSxPQUFBO0FBQ2YsdUdBQUEsY0FBYyxPQUFBO0FBQ2QseUdBQUEsZ0JBQWdCLE9BQUE7QUFLbEIseUNBSXFCO0FBSG5CLHlHQUFBLFlBQVksT0FBQTtBQUNaLDhHQUFBLGlCQUFpQixPQUFBO0FBQ2pCLHVHQUFBLFVBQVUsT0FBQTtBQUdaLG1DQVdrQjtBQVZoQix3R0FBQSxjQUFjLE9BQUE7QUFDZCx3R0FBQSxjQUFjLE9BQUE7QUFDZCxxR0FBQSxXQUFXLE9BQUE7QUFDWCxzR0FBQSxZQUFZLE9BQUE7QUFDWixzR0FBQSxZQUFZLE9BQUE7QUFDWiwyR0FBQSxpQkFBaUIsT0FBQTtBQUNqQiw0R0FBQSxrQkFBa0IsT0FBQTtBQUNsQixxSEFBQSwyQkFBMkIsT0FBQTtBQUs3QixpQ0FPaUI7QUFOZiwyR0FBQSxrQkFBa0IsT0FBQTtBQUNsQixxR0FBQSxZQUFZLE9BQUE7QUFDWiwwR0FBQSxpQkFBaUIsT0FBQTtBQUNqQiwwR0FBQSxpQkFBaUIsT0FBQSJ9
+
+/***/ }),
+
+/***/ 4696:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.getCacheConfig = getCacheConfig;
+exports.validateInputs = validateInputs;
+exports.resolvePath = resolvePath;
+exports.resolvePaths = resolvePaths;
+exports.parseEntries = parseEntries;
+exports.getPlatformSuffix = getPlatformSuffix;
+exports.getInputsWorkspace = getInputsWorkspace;
+exports.convertCacheFormatToEntries = convertCacheFormatToEntries;
+const core = __importStar(__nccwpck_require__(7484));
+const os = __importStar(__nccwpck_require__(857));
+const path = __importStar(__nccwpck_require__(6928));
+async function getCacheConfig(key, enableCrossOsArchive, noPlatform = false) {
+    let workspace = process.env.BORINGCACHE_DEFAULT_WORKSPACE ||
+        process.env.GITHUB_REPOSITORY ||
+        'default/default';
+    if (!workspace.includes('/')) {
+        workspace = `default/${workspace}`;
+    }
+    let platformSuffix = '';
+    if (!noPlatform && !enableCrossOsArchive) {
+        const platform = os.platform() === 'darwin' ? 'darwin' : os.platform() === 'win32' ? 'windows' : 'linux';
+        const arch = os.arch() === 'arm64' ? 'arm64' : 'amd64';
+        platformSuffix = `-${platform}-${arch}`;
+    }
+    const fullKey = key + platformSuffix;
+    return { workspace, fullKey, platformSuffix };
+}
+function validateInputs(inputs) {
+    const hasCliFormat = inputs.workspace || inputs.entries;
+    const hasCacheFormat = inputs.path || inputs.key;
+    if (!hasCliFormat && !hasCacheFormat) {
+        throw new Error('Either (workspace + entries) or (path + key) inputs are required');
+    }
+    if (hasCliFormat && hasCacheFormat) {
+        core.warning('Both CLI format (workspace/entries) and actions/cache format (path/key) provided. Using CLI format.');
+    }
+    if (hasCliFormat && !inputs.entries) {
+        throw new Error('Input "entries" is required when using CLI format');
+    }
+    if (hasCacheFormat && !hasCliFormat) {
+        if (!inputs.path) {
+            throw new Error('Input "path" is required when using actions/cache format');
+        }
+        if (!inputs.key) {
+            throw new Error('Input "key" is required when using actions/cache format');
+        }
+    }
+    if (inputs.workspace && typeof inputs.workspace === 'string' && !inputs.workspace.includes('/')) {
+        throw new Error('Workspace must be in format "namespace/workspace" (e.g., "my-org/my-project")');
+    }
+}
+function resolvePath(pathInput) {
+    const trimmedPath = pathInput.trim();
+    if (path.isAbsolute(trimmedPath)) {
+        return trimmedPath;
+    }
+    if (trimmedPath.startsWith('~/')) {
+        return path.join(os.homedir(), trimmedPath.slice(2));
+    }
+    return path.resolve(process.cwd(), trimmedPath);
+}
+function resolvePaths(pathInput) {
+    return pathInput
+        .split('\n')
+        .map(p => p.trim())
+        .filter(p => p)
+        .map(p => resolvePath(p))
+        .join('\n');
+}
+function parseEntries(entriesInput, _action, options = {}) {
+    const shouldResolve = options.resolvePaths ?? true;
+    return entriesInput
+        .split(',')
+        .map(entry => entry.trim())
+        .filter(entry => entry)
+        .map(entry => {
+        const colonIndex = entry.indexOf(':');
+        if (colonIndex === -1) {
+            throw new Error(`Invalid entry format: ${entry}. Expected format: tag:path or tag:restore_path=>save_path`);
+        }
+        const tag = entry.substring(0, colonIndex).trim();
+        const pathSpec = entry.substring(colonIndex + 1).trim();
+        if (!tag) {
+            throw new Error(`Invalid entry format: ${entry}. Tag cannot be empty`);
+        }
+        let restorePathInput = pathSpec;
+        let savePathInput = pathSpec;
+        const redirectIndex = pathSpec.indexOf('=>');
+        if (redirectIndex !== -1) {
+            restorePathInput = pathSpec.substring(0, redirectIndex).trim();
+            savePathInput = pathSpec.substring(redirectIndex + 2).trim();
+            if (!restorePathInput || !savePathInput) {
+                throw new Error(`Invalid entry format: ${entry}. Expected restore and save paths when using => syntax`);
+            }
+        }
+        const restorePath = shouldResolve ? resolvePath(restorePathInput) : restorePathInput;
+        const savePath = shouldResolve ? resolvePath(savePathInput) : savePathInput;
+        return { tag, restorePath, savePath };
+    });
+}
+function getPlatformSuffix(noPlatform, enableCrossOsArchive) {
+    if (noPlatform || enableCrossOsArchive) {
+        return '';
+    }
+    const platform = os.platform() === 'darwin' ? 'darwin' : os.platform() === 'win32' ? 'windows' : 'linux';
+    const arch = os.arch() === 'arm64' ? 'arm64' : 'amd64';
+    return `-${platform}-${arch}`;
+}
+/**
+ * Get workspace from action inputs (Record-based).
+ * Used by the generic action/save/restore actions.
+ * NOTE: This is different from workspace.ts getWorkspace which takes a string.
+ */
+function getInputsWorkspace(inputs) {
+    if (inputs.workspace && typeof inputs.workspace === 'string') {
+        return inputs.workspace;
+    }
+    const repo = process.env.GITHUB_REPOSITORY;
+    if (repo) {
+        const parts = repo.split('/');
+        return `${parts[0]}/${parts[1]}`;
+    }
+    return 'default/default';
+}
+function convertCacheFormatToEntries(inputs, _action) {
+    if (!inputs.path || !inputs.key) {
+        throw new Error('actions/cache format requires both path and key inputs');
+    }
+    const pathInput = inputs.path;
+    const keyInput = inputs.key;
+    const noPlatformInput = inputs.noPlatform;
+    const enableCrossOsArchiveInput = inputs.enableCrossOsArchive;
+    const paths = pathInput
+        .split('\n')
+        .map(p => p.trim())
+        .filter(p => p);
+    const shouldDisablePlatform = noPlatformInput || enableCrossOsArchiveInput || false;
+    const platformSuffix = getPlatformSuffix(shouldDisablePlatform, enableCrossOsArchiveInput || false);
+    const fullKey = keyInput + platformSuffix;
+    return paths.map(p => `${fullKey}:${resolvePath(p)}`).join(',');
+}
+//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiaW5wdXRzLmpzIiwic291cmNlUm9vdCI6IiIsInNvdXJjZXMiOlsiLi4vbGliL2lucHV0cy50cyJdLCJuYW1lcyI6W10sIm1hcHBpbmdzIjoiOzs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7OztBQW9CQSx3Q0F3QkM7QUFFRCx3Q0E0QkM7QUFFRCxrQ0FZQztBQUVELG9DQU9DO0FBRUQsb0NBMkNDO0FBRUQsOENBUUM7QUFPRCxnREFZQztBQUVELGtFQXVCQztBQXBNRCxvREFBc0M7QUFDdEMsdUNBQXlCO0FBQ3pCLDJDQUE2QjtBQWtCdEIsS0FBSyxVQUFVLGNBQWMsQ0FDbEMsR0FBVyxFQUNYLG9CQUE2QixFQUM3QixhQUFzQixLQUFLO0lBRTNCLElBQUksU0FBUyxHQUNYLE9BQU8sQ0FBQyxHQUFHLENBQUMsNkJBQTZCO1FBQ3pDLE9BQU8sQ0FBQyxHQUFHLENBQUMsaUJBQWlCO1FBQzdCLGlCQUFpQixDQUFDO0lBRXBCLElBQUksQ0FBQyxTQUFTLENBQUMsUUFBUSxDQUFDLEdBQUcsQ0FBQyxFQUFFLENBQUM7UUFDN0IsU0FBUyxHQUFHLFdBQVcsU0FBUyxFQUFFLENBQUM7SUFDckMsQ0FBQztJQUVELElBQUksY0FBYyxHQUFHLEVBQUUsQ0FBQztJQUN4QixJQUFJLENBQUMsVUFBVSxJQUFJLENBQUMsb0JBQW9CLEVBQUUsQ0FBQztRQUN6QyxNQUFNLFFBQVEsR0FBRyxFQUFFLENBQUMsUUFBUSxFQUFFLEtBQUssUUFBUSxDQUFDLENBQUMsQ0FBQyxRQUFRLENBQUMsQ0FBQyxDQUFDLEVBQUUsQ0FBQyxRQUFRLEVBQUUsS0FBSyxPQUFPLENBQUMsQ0FBQyxDQUFDLFNBQVMsQ0FBQyxDQUFDLENBQUMsT0FBTyxDQUFDO1FBQ3pHLE1BQU0sSUFBSSxHQUFHLEVBQUUsQ0FBQyxJQUFJLEVBQUUsS0FBSyxPQUFPLENBQUMsQ0FBQyxDQUFDLE9BQU8sQ0FBQyxDQUFDLENBQUMsT0FBTyxDQUFDO1FBQ3ZELGNBQWMsR0FBRyxJQUFJLFFBQVEsSUFBSSxJ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
+
+/***/ }),
+
+/***/ 4821:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.startRegistryProxy = startRegistryProxy;
+exports.waitForProxy = waitForProxy;
+exports.stopRegistryProxy = stopRegistryProxy;
+exports.findAvailablePort = findAvailablePort;
+const core = __importStar(__nccwpck_require__(7484));
+const fs = __importStar(__nccwpck_require__(9896));
+const net = __importStar(__nccwpck_require__(9278));
+const http = __importStar(__nccwpck_require__(8611));
+const os = __importStar(__nccwpck_require__(857));
+const path = __importStar(__nccwpck_require__(6928));
+const child_process_1 = __nccwpck_require__(5317);
+const PROXY_LOG_FILE = path.join(os.tmpdir(), 'boringcache-proxy.log');
+const PROXY_PID_FILE = path.join(os.tmpdir(), 'boringcache-proxy.pid');
+function isProcessAlive(pid) {
+    try {
+        process.kill(pid, 0);
+        return true;
+    }
+    catch {
+        return false;
+    }
+}
+function readProxyLogs() {
+    try {
+        return fs.readFileSync(PROXY_LOG_FILE, 'utf-8').trim();
+    }
+    catch {
+        return '';
+    }
+}
+async function isProxyRunning(port) {
+    try {
+        return await new Promise((resolve) => {
+            const req = http.get(`http://127.0.0.1:${port}/v2/`, (res) => {
+                resolve(res.statusCode === 200 || res.statusCode === 401);
+            });
+            req.on('error', () => resolve(false));
+            req.setTimeout(1000, () => { req.destroy(); resolve(false); });
+        });
+    }
+    catch {
+        return false;
+    }
+}
+/**
+ * Start a registry proxy (docker-registry or cache-registry).
+ * Spawns a detached boringcache process, writes PID file, returns handle.
+ */
+async function startRegistryProxy(options) {
+    if (!process.env.BORINGCACHE_API_TOKEN) {
+        throw new Error('BORINGCACHE_API_TOKEN is required for registry proxy mode');
+    }
+    const host = options.host || '127.0.0.1';
+    if (await isProxyRunning(options.port)) {
+        core.info(`Registry proxy already running on port ${options.port}, reusing`);
+        try {
+            const pid = parseInt(fs.readFileSync(PROXY_PID_FILE, 'utf-8').trim(), 10);
+            if (pid > 0)
+                return { pid, port: options.port };
+        }
+        catch { }
+        return { pid: -1, port: options.port };
+    }
+    const args = [options.command, options.workspace, options.tag];
+    if (options.noGit) {
+        args.push('--no-git');
+    }
+    if (options.noPlatform) {
+        args.push('--no-platform');
+    }
+    args.push('--host', host, '--port', String(options.port));
+    if (options.verbose) {
+        args.push('--verbose');
+    }
+    core.info(`Starting registry proxy on ${host}:${options.port}...`);
+    const logFile = path.join(os.tmpdir(), `boringcache-proxy-${options.port}.log`);
+    const logFd = fs.openSync(logFile, 'w');
+    const child = (0, child_process_1.spawn)('boringcache', args, {
+        detached: true,
+        stdio: ['ignore', logFd, logFd],
+        env: process.env
+    });
+    child.unref();
+    fs.closeSync(logFd);
+    if (!child.pid) {
+        throw new Error('Failed to start registry proxy');
+    }
+    fs.writeFileSync(PROXY_PID_FILE, String(child.pid));
+    core.info(`Registry proxy started (PID: ${child.pid})`);
+    return { pid: child.pid, port: options.port };
+}
+/**
+ * Poll /v2/ until proxy is ready. Checks that the process is still alive.
+ */
+async function waitForProxy(port, timeoutMs = 20000, pid) {
+    const start = Date.now();
+    const interval = 500;
+    while (Date.now() - start < timeoutMs) {
+        if (pid && pid > 0 && !isProcessAlive(pid)) {
+            const logs = readProxyLogs();
+            throw new Error(`Registry proxy exited before becoming ready${logs ? `:\n${logs}` : ''}`);
+        }
+        try {
+            const ok = await new Promise((resolve) => {
+                const req = http.get(`http://127.0.0.1:${port}/v2/`, (res) => {
+                    resolve(res.statusCode === 200 || res.statusCode === 401);
+                });
+                req.on('error', () => resolve(false));
+                req.setTimeout(1000, () => {
+                    req.destroy();
+                    resolve(false);
+                });
+            });
+            if (ok) {
+                core.info('Registry proxy is ready');
+                return;
+            }
+        }
+        catch {
+        }
+        await new Promise(resolve => setTimeout(resolve, interval));
+    }
+    const logs = readProxyLogs();
+    throw new Error(`Registry proxy did not become ready within ${timeoutMs}ms${logs ? `:\n${logs}` : ''}`);
+}
+/**
+ * Graceful stop: SIGTERM, wait 2s, SIGKILL if still alive.
+ */
+async function stopRegistryProxy(pid) {
+    if (pid <= 0) {
+        core.info('No proxy PID to stop (was reused from another invocation)');
+        return;
+    }
+    core.info(`Stopping registry proxy (PID: ${pid})...`);
+    try {
+        process.kill(pid, 'SIGTERM');
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        try {
+            process.kill(pid, 0);
+            process.kill(pid, 'SIGKILL');
+        }
+        catch {
+        }
+        core.info('Registry proxy stopped');
+    }
+    catch (err) {
+        const code = err.code;
+        if (code === 'ESRCH') {
+            core.info(`Registry proxy (PID: ${pid}) already exited`);
+        }
+        else {
+            core.warning(`Failed to stop registry proxy: ${err.message}`);
+        }
+    }
+}
+/**
+ * Bind to port 0 and return the assigned port.
+ */
+async function findAvailablePort() {
+    return new Promise((resolve, reject) => {
+        const server = net.createServer();
+        server.listen(0, '127.0.0.1', () => {
+            const addr = server.address();
+            if (addr && typeof addr !== 'string') {
+                const port = addr.port;
+                server.close(() => resolve(port));
+            }
+            else {
+                server.close(() => reject(new Error('Failed to get port')));
+            }
+        });
+        server.on('error', reject);
+    });
+}
+//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoicHJveHkuanMiLCJzb3VyY2VSb290IjoiIiwic291cmNlcyI6WyIuLi9saWIvcHJveHkudHMiXSwibmFtZXMiOltdLCJtYXBwaW5ncyI6Ijs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7QUE4REEsZ0RBZ0RDO0FBS0Qsb0NBZ0NDO0FBS0QsOENBdUJDO0FBS0QsOENBY0M7QUFsTUQsb0RBQXNDO0FBQ3RDLHVDQUF5QjtBQUN6Qix5Q0FBMkI7QUFDM0IsMkNBQTZCO0FBQzdCLHVDQUF5QjtBQUN6QiwyQ0FBNkI7QUFDN0IsaURBQW9EO0FBa0JwRCxNQUFNLGNBQWMsR0FBRyxJQUFJLENBQUMsSUFBSSxDQUFDLEVBQUUsQ0FBQyxNQUFNLEVBQUUsRUFBRSx1QkFBdUIsQ0FBQyxDQUFDO0FBQ3ZFLE1BQU0sY0FBYyxHQUFHLElBQUksQ0FBQyxJQUFJLENBQUMsRUFBRSxDQUFDLE1BQU0sRUFBRSxFQUFFLHVCQUF1QixDQUFDLENBQUM7QUFFdkUsU0FBUyxjQUFjLENBQUMsR0FBVztJQUNqQyxJQUFJLENBQUM7UUFDSCxPQUFPLENBQUMsSUFBSSxDQUFDLEdBQUcsRUFBRSxDQUFDLENBQUMsQ0FBQztRQUNyQixPQUFPLElBQUksQ0FBQztJQUNkLENBQUM7SUFBQyxNQUFNLENBQUM7UUFDUCxPQUFPLEtBQUssQ0FBQztJQUNmLENBQUM7QUFDSCxDQUFDO0FBRUQsU0FBUyxhQUFhO0lBQ3BCLElBQUksQ0FBQztRQUNILE9BQU8sRUFBRSxDQUFDLFlBQVksQ0FBQyxjQUFjLEVBQUUsT0FBTyxDQUFDLENBQUMsSUFBSSxFQUFFLENBQUM7SUFDekQsQ0FBQztJQUFDLE1BQU0sQ0FBQztRQUNQLE9BQU8sRUFBRSxDQUFDO0lBQ1osQ0FBQztBQUNILENBQUM7QUFFRCxLQUFLLFVBQVUsY0FBYyxDQUFDLElBQVk7SUFDeEMsSUFBSSxDQUFDO1FBQ0gsT0FBTyxNQUFNLElBQUksT0FBTyxDQUFVLENBQUMsT0FBTyxFQUFFLEVBQUU7WUFDNUMsTUFBTSxHQUFHLEdB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
 
 /***/ }),
 
@@ -8920,6 +9339,96 @@ async function execBoringCache(args, options = {}) {
     }
 }
 //# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoic2V0dXAuanMiLCJzb3VyY2VSb290IjoiIiwic291cmNlcyI6WyIuLi9saWIvc2V0dXAudHMiXSwibmFtZXMiOltdLCJtYXBwaW5ncyI6Ijs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7QUFzQ0EsNENBYUM7QUEwS0Qsd0NBZUM7QUFFRCw4Q0FvRkM7QUFFRCwwQ0FxQkM7QUF6VkQsb0RBQXNDO0FBQ3RDLG9EQUFzQztBQUN0Qyx3REFBMEM7QUFDMUMsc0RBQXdDO0FBQ3hDLCtDQUFpQztBQUNqQyx1Q0FBeUI7QUFDekIsdUNBQXlCO0FBQ3pCLDJDQUE2QjtBQUU3QixNQUFNLFNBQVMsR0FBRyxhQUFhLENBQUM7QUFDaEMsTUFBTSxvQkFBb0IsR0FBRyxzREFBc0QsQ0FBQztBQXdCcEY7OztHQUdHO0FBQ0gsU0FBZ0IsZ0JBQWdCLENBQUMsT0FBZTtJQUM5QyxNQUFNLGlCQUFpQixHQUFHLE9BQU8sQ0FBQyxPQUFPLENBQUMsSUFBSSxFQUFFLEVBQUUsQ0FBQyxDQUFDO0lBQ3BELE1BQU0sUUFBUSxHQUFHLGVBQWUsRUFBRSxDQUFDO0lBQ25DLE1BQU0sU0FBUyxHQUFHLEVBQUUsQ0FBQyxJQUFJLENBQUMsU0FBUyxFQUFFLGlCQUFpQixDQUFDLENBQUM7SUFDeEQsTUFBTSxhQUFhLEdBQUcsT0FBTyxDQUFDLEdBQUcsQ0FBQyxpQkFBaUIsSUFBSSxzQkFBc0IsQ0FBQztJQUU5RSxPQUFPO1FBQ0wsUUFBUSxFQUFFLFNBQVM7UUFDbkIsT0FBTyxFQUFFLGlCQUFpQjtRQUMxQixTQUFTLEVBQUUsU0FBUyxJQUFJLElBQUk7UUFDNUIsWUFBWSxFQUFFLEdBQUcsYUFBYSxJQUFJLFNBQVMsSUFBSSxpQkFBaUIsR0FBRztRQUNuRSxRQUFRLEVBQUUsR0FBRyxTQUFTLElBQUksaUJBQWlCLElBQUksUUFBUSxDQUFDLEVBQUUsSUFBSSxRQUFRLENBQUMsSUFBSSxFQUFFO0tBQzlFLENBQUM7QUFDSixDQUFDO0FBU0QsU0FBUyxlQUFlO0lBQ3RCLE1BQU0s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
+
+/***/ }),
+
+/***/ 8084:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.getWorkspace = getWorkspace;
+exports.getCacheTagPrefix = getCacheTagPrefix;
+exports.pathExists = pathExists;
+const core = __importStar(__nccwpck_require__(7484));
+const fs = __importStar(__nccwpck_require__(9896));
+/**
+ * Resolve workspace from input or environment.
+ * Used by docker, buildkit, nodejs, rust, ruby actions.
+ */
+function getWorkspace(inputWorkspace) {
+    let workspace = inputWorkspace || process.env.BORINGCACHE_DEFAULT_WORKSPACE || '';
+    if (!workspace) {
+        core.setFailed('Workspace is required. Set workspace input or BORINGCACHE_DEFAULT_WORKSPACE env var.');
+        throw new Error('Workspace required');
+    }
+    if (!workspace.includes('/')) {
+        workspace = `default/${workspace}`;
+    }
+    return workspace;
+}
+/**
+ * Resolve cache tag prefix from input or GITHUB_REPOSITORY.
+ * Falls back to the provided default (e.g. 'nodejs', 'rust', 'ruby').
+ */
+function getCacheTagPrefix(inputCacheTag, defaultPrefix) {
+    if (inputCacheTag) {
+        return inputCacheTag;
+    }
+    const repo = process.env.GITHUB_REPOSITORY || '';
+    if (repo) {
+        const repoName = repo.split('/')[1] || repo;
+        return repoName;
+    }
+    return defaultPrefix;
+}
+/**
+ * Async file/directory existence check.
+ */
+async function pathExists(p) {
+    try {
+        await fs.promises.access(p);
+        return true;
+    }
+    catch {
+        return false;
+    }
+}
+//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoid29ya3NwYWNlLmpzIiwic291cmNlUm9vdCI6IiIsInNvdXJjZXMiOlsiLi4vbGliL3dvcmtzcGFjZS50cyJdLCJuYW1lcyI6W10sIm1hcHBpbmdzIjoiOzs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7OztBQU9BLG9DQWFDO0FBTUQsOENBWUM7QUFLRCxnQ0FPQztBQWxERCxvREFBc0M7QUFDdEMsdUNBQXlCO0FBRXpCOzs7R0FHRztBQUNILFNBQWdCLFlBQVksQ0FBQyxjQUFzQjtJQUNqRCxJQUFJLFNBQVMsR0FBRyxjQUFjLElBQUksT0FBTyxDQUFDLEdBQUcsQ0FBQyw2QkFBNkIsSUFBSSxFQUFFLENBQUM7SUFFbEYsSUFBSSxDQUFDLFNBQVMsRUFBRSxDQUFDO1FBQ2YsSUFBSSxDQUFDLFNBQVMsQ0FBQyxzRkFBc0YsQ0FBQyxDQUFDO1FBQ3ZHLE1BQU0sSUFBSSxLQUFLLENBQUMsb0JBQW9CLENBQUMsQ0FBQztJQUN4QyxDQUFDO0lBRUQsSUFBSSxDQUFDLFNBQVMsQ0FBQyxRQUFRLENBQUMsR0FBRyxDQUFDLEVBQUUsQ0FBQztRQUM3QixTQUFTLEdBQUcsV0FBVyxTQUFTLEVBQUUsQ0FBQztJQUNyQyxDQUFDO0lBRUQsT0FBTyxTQUFTLENBQUM7QUFDbkIsQ0FBQztBQUVEOzs7R0FHRztBQUNILFNBQWdCLGlCQUFpQixDQUFDLGFBQXFCLEVBQUUsYUFBcUI7SUFDNUUsSUFBSSxhQUFhLEVBQUUsQ0FBQztRQUNsQixPQUFPLGFBQWEsQ0FBQztJQUN2QixDQUFDO0lBRUQsTUFBTSxJQUFJLEdBQUcsT0FBTyxDQUFDLEdBQUcsQ0FBQyxpQkFBaUIsSUFBSSxFQUFFLENBQUM7SUFDakQsSUFBSSxJQUFJLEVBQUUsQ0FBQztRQUNULE1BQU0sUUFBUSxHQUFHLElBQUksQ0FBQyxLQUFLLENBQUMsR0FBRyxDQUFDLENBQUMsQ0FBQyxDQUFDLElBQUksSUFBSSxDQUFDO1FBQzVDLE9BQU8sUUFBUSxDQUFDO0lBQ2xCLENBQUM7SUFFRCxPQUFPLGFBQWEsQ0FBQztBQUN2QixDQUFDO0FBRUQ7O0dBRUc7QUFDSSxLQUFLLFVBQVUsVUFBVSxDQUFDLENBQVM7SUFDeEMsSUFBSSxDQUFDO1FBQ0gsTUFBTSxFQUFFLENBQUMsUUFBUSxDQUFDLE1BQU0sQ0FBQyxDQUFDLENBQUMsQ0FBQztRQUM1QixPQUFPLElBQUksQ0FBQztJQUNkLENBQUM7SUFBQyxNQUFNLENBQUM7UUFDUCxPQUFPLEtBQUssQ0FBQztJQUNmLENBQUM7QUFDSCxDQUFDIn0=
 
 /***/ }),
 
@@ -41624,7 +42133,7 @@ async function run() {
         let workspace = core.getState('workspace') || core.getInput('workspace') || '';
         let cacheTag = core.getState('cacheTag') || core.getInput('cache-tag') || '';
         let cacheDir = core.getState('cacheDir') || core.getInput('cache-dir') || utils_1.CACHE_DIR;
-        const cliVersion = core.getInput('cli-version') || 'v1.1.1';
+        const cliVersion = core.getInput('cli-version') || 'v1.2.0';
         const verbose = core.getState('verbose') === 'true' || (0, utils_1.parseBoolean)(core.getInput('verbose'), false);
         const exclude = core.getState('exclude') || core.getInput('exclude') || '';
         if (!workspace) {
@@ -41701,14 +42210,13 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.METADATA_FILE = exports.CACHE_DIR_TO = exports.CACHE_DIR_FROM = exports.CACHE_DIR = exports.ensureBoringCache = void 0;
+exports.METADATA_FILE = exports.CACHE_DIR_TO = exports.CACHE_DIR_FROM = exports.CACHE_DIR = exports.stopRegistryProxy = exports.waitForProxy = exports.startRegistryProxy = exports.getWorkspace = exports.ensureBoringCache = void 0;
 exports.parseBoolean = parseBoolean;
 exports.parseList = parseList;
 exports.parseMultiline = parseMultiline;
 exports.slugify = slugify;
 exports.ensureDir = ensureDir;
 exports.computeDockerfileHash = computeDockerfileHash;
-exports.getWorkspace = getWorkspace;
 exports.execBoringCache = execBoringCache;
 exports.restoreCache = restoreCache;
 exports.saveCache = saveCache;
@@ -41716,9 +42224,6 @@ exports.getRegistryRef = getRegistryRef;
 exports.getRegistryCacheFlags = getRegistryCacheFlags;
 exports.getContainerGateway = getContainerGateway;
 exports.getContainerNetworkMode = getContainerNetworkMode;
-exports.startRegistryProxy = startRegistryProxy;
-exports.waitForProxy = waitForProxy;
-exports.stopRegistryProxy = stopRegistryProxy;
 exports.setupQemuIfNeeded = setupQemuIfNeeded;
 exports.setupBuildxBuilder = setupBuildxBuilder;
 exports.getBuilderPlatforms = getBuilderPlatforms;
@@ -41730,10 +42235,12 @@ const fs = __importStar(__nccwpck_require__(9896));
 const path = __importStar(__nccwpck_require__(6928));
 const os = __importStar(__nccwpck_require__(857));
 const crypto = __importStar(__nccwpck_require__(6982));
-const http = __importStar(__nccwpck_require__(8611));
-const child_process_1 = __nccwpck_require__(5317);
 const action_core_1 = __nccwpck_require__(8701);
 Object.defineProperty(exports, "ensureBoringCache", ({ enumerable: true, get: function () { return action_core_1.ensureBoringCache; } }));
+Object.defineProperty(exports, "getWorkspace", ({ enumerable: true, get: function () { return action_core_1.getWorkspace; } }));
+Object.defineProperty(exports, "startRegistryProxy", ({ enumerable: true, get: function () { return action_core_1.startRegistryProxy; } }));
+Object.defineProperty(exports, "waitForProxy", ({ enumerable: true, get: function () { return action_core_1.waitForProxy; } }));
+Object.defineProperty(exports, "stopRegistryProxy", ({ enumerable: true, get: function () { return action_core_1.stopRegistryProxy; } }));
 exports.CACHE_DIR = path.join(os.tmpdir(), 'buildkit-cache');
 exports.CACHE_DIR_FROM = path.join(os.tmpdir(), 'buildkit-cache-from');
 exports.CACHE_DIR_TO = path.join(os.tmpdir(), 'buildkit-cache-to');
@@ -41767,17 +42274,6 @@ function computeDockerfileHash(dockerfilePath) {
     }
     const content = fs.readFileSync(dockerfilePath);
     return crypto.createHash('sha256').update(content).digest('hex').slice(0, 16);
-}
-function getWorkspace(inputWorkspace) {
-    let workspace = inputWorkspace || process.env.BORINGCACHE_DEFAULT_WORKSPACE || '';
-    if (!workspace) {
-        core.setFailed('Workspace is required. Set workspace input or BORINGCACHE_DEFAULT_WORKSPACE env var.');
-        throw new Error('Workspace required');
-    }
-    if (!workspace.includes('/')) {
-        workspace = `default/${workspace}`;
-    }
-    return workspace;
 }
 async function execBoringCache(args) {
     return (0, action_core_1.execBoringCache)(args);
@@ -41852,136 +42348,6 @@ async function getContainerNetworkMode(containerName) {
         return 'bridge';
     }
     return networkMode;
-}
-const PROXY_LOG_FILE = path.join(os.tmpdir(), 'boringcache-proxy.log');
-const PROXY_PID_FILE = path.join(os.tmpdir(), 'boringcache-proxy.pid');
-async function isProxyRunning(port) {
-    try {
-        return await new Promise((resolve) => {
-            const req = http.get(`http://127.0.0.1:${port}/v2/`, (res) => {
-                resolve(res.statusCode === 200 || res.statusCode === 401);
-            });
-            req.on('error', () => resolve(false));
-            req.setTimeout(1000, () => { req.destroy(); resolve(false); });
-        });
-    }
-    catch {
-        return false;
-    }
-}
-async function startRegistryProxy(workspace, port, verbose, bindHost = '127.0.0.1', options = {}) {
-    if (!process.env.BORINGCACHE_API_TOKEN) {
-        throw new Error('BORINGCACHE_API_TOKEN is required for registry proxy mode');
-    }
-    if (await isProxyRunning(port)) {
-        core.info(`Registry proxy already running on port ${port}, reusing`);
-        try {
-            const pid = parseInt(fs.readFileSync(PROXY_PID_FILE, 'utf-8').trim(), 10);
-            if (pid > 0)
-                return pid;
-        }
-        catch { }
-        return -1;
-    }
-    const args = ['docker-registry', workspace];
-    const registryTag = (options.registryTag || '').trim();
-    if (registryTag) {
-        args.push(registryTag);
-    }
-    if (options.noGit) {
-        args.push('--no-git');
-    }
-    if (options.noPlatform) {
-        args.push('--no-platform');
-    }
-    args.push('--host', bindHost, '--port', String(port));
-    if (verbose) {
-        args.push('--verbose');
-    }
-    core.info(`Starting registry proxy on ${bindHost}:${port}...`);
-    const logFd = fs.openSync(PROXY_LOG_FILE, 'w');
-    const child = (0, child_process_1.spawn)('boringcache', args, {
-        detached: true,
-        stdio: ['ignore', logFd, logFd],
-        env: process.env
-    });
-    child.unref();
-    fs.closeSync(logFd);
-    if (!child.pid) {
-        throw new Error('Failed to start registry proxy');
-    }
-    fs.writeFileSync(PROXY_PID_FILE, String(child.pid));
-    core.info(`Registry proxy started (PID: ${child.pid})`);
-    return child.pid;
-}
-function isProcessAlive(pid) {
-    try {
-        process.kill(pid, 0);
-        return true;
-    }
-    catch {
-        return false;
-    }
-}
-function readProxyLogs() {
-    try {
-        return fs.readFileSync(PROXY_LOG_FILE, 'utf-8').trim();
-    }
-    catch {
-        return '';
-    }
-}
-async function waitForProxy(port, timeoutMs = 20000, pid) {
-    const start = Date.now();
-    const interval = 500;
-    while (Date.now() - start < timeoutMs) {
-        if (pid && !isProcessAlive(pid)) {
-            const logs = readProxyLogs();
-            throw new Error(`Registry proxy exited before becoming ready${logs ? `:\n${logs}` : ''}`);
-        }
-        try {
-            const ok = await new Promise((resolve) => {
-                const req = http.get(`http://127.0.0.1:${port}/v2/`, (res) => {
-                    resolve(res.statusCode === 200 || res.statusCode === 401);
-                });
-                req.on('error', () => resolve(false));
-                req.setTimeout(1000, () => {
-                    req.destroy();
-                    resolve(false);
-                });
-            });
-            if (ok) {
-                core.info('Registry proxy is ready');
-                return;
-            }
-        }
-        catch {
-        }
-        await new Promise(resolve => setTimeout(resolve, interval));
-    }
-    const logs = readProxyLogs();
-    throw new Error(`Registry proxy did not become ready within ${timeoutMs}ms${logs ? `:\n${logs}` : ''}`);
-}
-async function stopRegistryProxy(pid) {
-    if (pid <= 0) {
-        core.info('No proxy PID to stop (was reused from another invocation)');
-        return;
-    }
-    core.info(`Stopping registry proxy (PID: ${pid})...`);
-    try {
-        process.kill(pid, 'SIGTERM');
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        try {
-            process.kill(pid, 0);
-            process.kill(pid, 'SIGKILL');
-        }
-        catch {
-        }
-        core.info('Registry proxy stopped');
-    }
-    catch (err) {
-        core.warning(`Failed to stop registry proxy: ${err.message}`);
-    }
 }
 async function setupQemuIfNeeded(platforms) {
     if (!platforms)

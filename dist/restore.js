@@ -73,7 +73,7 @@ async function run() {
         core.saveState('verbose', verbose.toString());
         core.saveState('exclude', exclude);
         if (cliVersion.toLowerCase() !== 'skip') {
-            await (0, utils_1.ensureBoringCache)({ version: cliVersion || 'v1.1.1' });
+            await (0, utils_1.ensureBoringCache)({ version: cliVersion || 'v1.2.0' });
         }
         const builderName = await (0, utils_1.setupBuildxBuilder)(driver, driverOpts, buildkitdConfigInline, useRegistryProxy);
         core.setOutput('buildx-name', builderName);
@@ -94,13 +94,19 @@ async function run() {
                     core.info(`Buildx in container network "${networkMode}", proxy binding to ${proxyBindHost}, ref using gateway ${refHost}`);
                 }
             }
-            const proxyPid = await (0, utils_1.startRegistryProxy)(workspace, proxyPort, verbose, proxyBindHost, {
-                registryTag,
+            const effectiveTag = registryTag || cacheTag;
+            const proxy = await (0, utils_1.startRegistryProxy)({
+                command: 'docker-registry',
+                workspace,
+                tag: effectiveTag,
+                host: proxyBindHost,
+                port: proxyPort,
                 noGit: proxyNoGit,
-                noPlatform: proxyNoPlatform
+                noPlatform: proxyNoPlatform,
+                verbose,
             });
-            await (0, utils_1.waitForProxy)(proxyPort, 20000, proxyPid);
-            core.saveState('proxyPid', String(proxyPid));
+            await (0, utils_1.waitForProxy)(proxy.port, 20000, proxy.pid);
+            core.saveState('proxyPid', String(proxy.pid));
             const ref = (0, utils_1.getRegistryRef)(proxyPort, cacheTag, refHost);
             const registryCache = (0, utils_1.getRegistryCacheFlags)(ref, cacheMode);
             await (0, utils_1.buildDockerImage)({

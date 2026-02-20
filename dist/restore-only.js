@@ -39,7 +39,7 @@ async function run() {
     try {
         const workspace = (0, utils_1.getWorkspace)(core.getInput('workspace', { required: true }));
         const cacheDir = core.getInput('cache-dir') || utils_1.CACHE_DIR;
-        const cliVersion = core.getInput('cli-version') || 'v1.1.1';
+        const cliVersion = core.getInput('cli-version') || 'v1.2.0';
         const registryTag = core.getInput('registry-tag') || '';
         const proxyNoGit = (0, utils_1.parseBoolean)(core.getInput('proxy-no-git'), false);
         const proxyNoPlatform = (0, utils_1.parseBoolean)(core.getInput('proxy-no-platform'), false);
@@ -63,13 +63,19 @@ async function run() {
         core.saveState('verbose', verbose.toString());
         core.saveState('exclude', exclude);
         if (useRegistryProxy) {
-            const proxyPid = await (0, utils_1.startRegistryProxy)(workspace, proxyPort, verbose, '127.0.0.1', {
-                registryTag,
+            const effectiveTag = registryTag || cacheTag;
+            const proxy = await (0, utils_1.startRegistryProxy)({
+                command: 'docker-registry',
+                workspace,
+                tag: effectiveTag,
+                host: '127.0.0.1',
+                port: proxyPort,
                 noGit: proxyNoGit,
-                noPlatform: proxyNoPlatform
+                noPlatform: proxyNoPlatform,
+                verbose,
             });
-            await (0, utils_1.waitForProxy)(proxyPort, 20000, proxyPid);
-            core.saveState('proxyPid', String(proxyPid));
+            await (0, utils_1.waitForProxy)(proxy.port, 20000, proxy.pid);
+            core.saveState('proxyPid', String(proxy.pid));
             const ref = (0, utils_1.getRegistryRef)(proxyPort, cacheTag);
             const registryCache = (0, utils_1.getRegistryCacheFlags)(ref, cacheMode);
             const cacheFrom = registryCache.cacheFrom;

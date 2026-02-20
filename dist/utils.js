@@ -33,14 +33,13 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.METADATA_FILE = exports.CACHE_DIR_TO = exports.CACHE_DIR_FROM = exports.CACHE_DIR = exports.ensureBoringCache = void 0;
+exports.METADATA_FILE = exports.CACHE_DIR_TO = exports.CACHE_DIR_FROM = exports.CACHE_DIR = exports.stopRegistryProxy = exports.waitForProxy = exports.startRegistryProxy = exports.getWorkspace = exports.ensureBoringCache = void 0;
 exports.parseBoolean = parseBoolean;
 exports.parseList = parseList;
 exports.parseMultiline = parseMultiline;
 exports.slugify = slugify;
 exports.ensureDir = ensureDir;
 exports.computeDockerfileHash = computeDockerfileHash;
-exports.getWorkspace = getWorkspace;
 exports.execBoringCache = execBoringCache;
 exports.restoreCache = restoreCache;
 exports.saveCache = saveCache;
@@ -48,9 +47,6 @@ exports.getRegistryRef = getRegistryRef;
 exports.getRegistryCacheFlags = getRegistryCacheFlags;
 exports.getContainerGateway = getContainerGateway;
 exports.getContainerNetworkMode = getContainerNetworkMode;
-exports.startRegistryProxy = startRegistryProxy;
-exports.waitForProxy = waitForProxy;
-exports.stopRegistryProxy = stopRegistryProxy;
 exports.setupQemuIfNeeded = setupQemuIfNeeded;
 exports.setupBuildxBuilder = setupBuildxBuilder;
 exports.getBuilderPlatforms = getBuilderPlatforms;
@@ -62,10 +58,12 @@ const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
 const os = __importStar(require("os"));
 const crypto = __importStar(require("crypto"));
-const http = __importStar(require("http"));
-const child_process_1 = require("child_process");
 const action_core_1 = require("@boringcache/action-core");
 Object.defineProperty(exports, "ensureBoringCache", { enumerable: true, get: function () { return action_core_1.ensureBoringCache; } });
+Object.defineProperty(exports, "getWorkspace", { enumerable: true, get: function () { return action_core_1.getWorkspace; } });
+Object.defineProperty(exports, "startRegistryProxy", { enumerable: true, get: function () { return action_core_1.startRegistryProxy; } });
+Object.defineProperty(exports, "waitForProxy", { enumerable: true, get: function () { return action_core_1.waitForProxy; } });
+Object.defineProperty(exports, "stopRegistryProxy", { enumerable: true, get: function () { return action_core_1.stopRegistryProxy; } });
 exports.CACHE_DIR = path.join(os.tmpdir(), 'buildkit-cache');
 exports.CACHE_DIR_FROM = path.join(os.tmpdir(), 'buildkit-cache-from');
 exports.CACHE_DIR_TO = path.join(os.tmpdir(), 'buildkit-cache-to');
@@ -99,17 +97,6 @@ function computeDockerfileHash(dockerfilePath) {
     }
     const content = fs.readFileSync(dockerfilePath);
     return crypto.createHash('sha256').update(content).digest('hex').slice(0, 16);
-}
-function getWorkspace(inputWorkspace) {
-    let workspace = inputWorkspace || process.env.BORINGCACHE_DEFAULT_WORKSPACE || '';
-    if (!workspace) {
-        core.setFailed('Workspace is required. Set workspace input or BORINGCACHE_DEFAULT_WORKSPACE env var.');
-        throw new Error('Workspace required');
-    }
-    if (!workspace.includes('/')) {
-        workspace = `default/${workspace}`;
-    }
-    return workspace;
 }
 async function execBoringCache(args) {
     return (0, action_core_1.execBoringCache)(args);
@@ -184,136 +171,6 @@ async function getContainerNetworkMode(containerName) {
         return 'bridge';
     }
     return networkMode;
-}
-const PROXY_LOG_FILE = path.join(os.tmpdir(), 'boringcache-proxy.log');
-const PROXY_PID_FILE = path.join(os.tmpdir(), 'boringcache-proxy.pid');
-async function isProxyRunning(port) {
-    try {
-        return await new Promise((resolve) => {
-            const req = http.get(`http://127.0.0.1:${port}/v2/`, (res) => {
-                resolve(res.statusCode === 200 || res.statusCode === 401);
-            });
-            req.on('error', () => resolve(false));
-            req.setTimeout(1000, () => { req.destroy(); resolve(false); });
-        });
-    }
-    catch {
-        return false;
-    }
-}
-async function startRegistryProxy(workspace, port, verbose, bindHost = '127.0.0.1', options = {}) {
-    if (!process.env.BORINGCACHE_API_TOKEN) {
-        throw new Error('BORINGCACHE_API_TOKEN is required for registry proxy mode');
-    }
-    if (await isProxyRunning(port)) {
-        core.info(`Registry proxy already running on port ${port}, reusing`);
-        try {
-            const pid = parseInt(fs.readFileSync(PROXY_PID_FILE, 'utf-8').trim(), 10);
-            if (pid > 0)
-                return pid;
-        }
-        catch { }
-        return -1;
-    }
-    const args = ['docker-registry', workspace];
-    const registryTag = (options.registryTag || '').trim();
-    if (registryTag) {
-        args.push(registryTag);
-    }
-    if (options.noGit) {
-        args.push('--no-git');
-    }
-    if (options.noPlatform) {
-        args.push('--no-platform');
-    }
-    args.push('--host', bindHost, '--port', String(port));
-    if (verbose) {
-        args.push('--verbose');
-    }
-    core.info(`Starting registry proxy on ${bindHost}:${port}...`);
-    const logFd = fs.openSync(PROXY_LOG_FILE, 'w');
-    const child = (0, child_process_1.spawn)('boringcache', args, {
-        detached: true,
-        stdio: ['ignore', logFd, logFd],
-        env: process.env
-    });
-    child.unref();
-    fs.closeSync(logFd);
-    if (!child.pid) {
-        throw new Error('Failed to start registry proxy');
-    }
-    fs.writeFileSync(PROXY_PID_FILE, String(child.pid));
-    core.info(`Registry proxy started (PID: ${child.pid})`);
-    return child.pid;
-}
-function isProcessAlive(pid) {
-    try {
-        process.kill(pid, 0);
-        return true;
-    }
-    catch {
-        return false;
-    }
-}
-function readProxyLogs() {
-    try {
-        return fs.readFileSync(PROXY_LOG_FILE, 'utf-8').trim();
-    }
-    catch {
-        return '';
-    }
-}
-async function waitForProxy(port, timeoutMs = 20000, pid) {
-    const start = Date.now();
-    const interval = 500;
-    while (Date.now() - start < timeoutMs) {
-        if (pid && !isProcessAlive(pid)) {
-            const logs = readProxyLogs();
-            throw new Error(`Registry proxy exited before becoming ready${logs ? `:\n${logs}` : ''}`);
-        }
-        try {
-            const ok = await new Promise((resolve) => {
-                const req = http.get(`http://127.0.0.1:${port}/v2/`, (res) => {
-                    resolve(res.statusCode === 200 || res.statusCode === 401);
-                });
-                req.on('error', () => resolve(false));
-                req.setTimeout(1000, () => {
-                    req.destroy();
-                    resolve(false);
-                });
-            });
-            if (ok) {
-                core.info('Registry proxy is ready');
-                return;
-            }
-        }
-        catch {
-        }
-        await new Promise(resolve => setTimeout(resolve, interval));
-    }
-    const logs = readProxyLogs();
-    throw new Error(`Registry proxy did not become ready within ${timeoutMs}ms${logs ? `:\n${logs}` : ''}`);
-}
-async function stopRegistryProxy(pid) {
-    if (pid <= 0) {
-        core.info('No proxy PID to stop (was reused from another invocation)');
-        return;
-    }
-    core.info(`Stopping registry proxy (PID: ${pid})...`);
-    try {
-        process.kill(pid, 'SIGTERM');
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        try {
-            process.kill(pid, 0);
-            process.kill(pid, 'SIGKILL');
-        }
-        catch {
-        }
-        core.info('Registry proxy stopped');
-    }
-    catch (err) {
-        core.warning(`Failed to stop registry proxy: ${err.message}`);
-    }
 }
 async function setupQemuIfNeeded(platforms) {
     if (!platforms)
