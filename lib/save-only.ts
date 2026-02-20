@@ -24,7 +24,7 @@ async function run(): Promise<void> {
     let workspace = core.getState('workspace') || core.getInput('workspace') || '';
     let cacheTag = core.getState('cacheTag') || core.getInput('cache-tag') || '';
     let cacheDir = core.getState('cacheDir') || core.getInput('cache-dir') || CACHE_DIR;
-    const cliVersion = core.getInput('cli-version') || 'v1.0.3';
+    const cliVersion = core.getInput('cli-version') || 'v1.1.0';
     const verbose = core.getState('verbose') === 'true' || parseBoolean(core.getInput('verbose'), false);
     const exclude = core.getState('exclude') || core.getInput('exclude') || '';
 

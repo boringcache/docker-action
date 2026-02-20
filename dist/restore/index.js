@@ -41649,7 +41649,7 @@ async function run() {
         core.saveState('verbose', verbose.toString());
         core.saveState('exclude', exclude);
         if (cliVersion.toLowerCase() !== 'skip') {
-            await (0, utils_1.ensureBoringCache)({ version: cliVersion || 'v1.0.3' });
+            await (0, utils_1.ensureBoringCache)({ version: cliVersion || 'v1.1.0' });
         }
         const builderName = await (0, utils_1.setupBuildxBuilder)(driver, driverOpts, buildkitdConfigInline, useRegistryProxy);
         core.setOutput('buildx-name', builderName);
