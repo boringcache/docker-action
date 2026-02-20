@@ -41624,7 +41624,7 @@ async function run() {
         let workspace = core.getState('workspace') || core.getInput('workspace') || '';
         let cacheTag = core.getState('cacheTag') || core.getInput('cache-tag') || '';
         let cacheDir = core.getState('cacheDir') || core.getInput('cache-dir') || utils_1.CACHE_DIR;
-        const cliVersion = core.getInput('cli-version') || 'v1.1.0';
+        const cliVersion = core.getInput('cli-version') || 'v1.1.1';
         const verbose = core.getState('verbose') === 'true' || (0, utils_1.parseBoolean)(core.getInput('verbose'), false);
         const exclude = core.getState('exclude') || core.getInput('exclude') || '';
         if (!workspace) {
