@@ -1,14 +1,8 @@
 # boringcache/docker-action
 
-**Cache once. Reuse everywhere.**
+Cache Docker BuildKit layers with BoringCache. Runs a local OCI registry proxy for lazy layer restore.
 
-BoringCache is a universal build artifact cache for CI, Docker, and local development. It stores and restores directories you choose so build outputs, dependencies, and tool caches can be reused across environments.
-
-BoringCache does not run builds and is not tied to any build tool. It works with any language, framework, or workflow by caching directories explicitly selected by the user.
-
-Caches are content-addressed and verified before restore. If identical content already exists, uploads are skipped. The same cache can be reused in GitHub Actions, Docker/BuildKit, and on developer machines using the same CLI.
-
-This action caches BuildKit layer caches (the directories used by `docker buildx`). It does not cache Docker images unless you push them. Caches can be reused outside Docker builds.
+Layers are fetched on demand during `docker buildx build` and pushed through the proxy — no bulk restore/save steps needed. Caches are content-addressed — identical content is never re-uploaded.
 
 ## Quick start
 
@@ -194,7 +188,7 @@ COPY . .
 | `no-cache` | No | `false` | Build without cache. |
 | `cache-mode` | No | `max` | BuildKit cache mode (`min` or `max`). |
 | `cache-tag` | No | slugified image name | Cache tag for BoringCache. |
-| `cli-version` | No | `v1.0.3` | BoringCache CLI version. Set to `skip` to disable installation. |
+| `cli-version` | No | `v1.2.0` | BoringCache CLI version. Set to `skip` to disable installation. |
 | `buildx-version` | No | - | Buildx version to use (e.g., `v0.12.0`, `latest`). |
 | `driver` | No | `docker-container` | Buildx driver. |
 | `driver-opts` | No | - | Driver options (newline-separated). |
