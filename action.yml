@@ -6,7 +6,7 @@ inputs:
   cli-version:
     description: 'BoringCache CLI version (e.g., v1.0.0). Set to "skip" to disable automatic CLI setup.'
     required: false
-    default: 'v1.2.0'
+    default: 'v1.3.0'
   context:
     description: 'Docker build context path.'
     required: false
