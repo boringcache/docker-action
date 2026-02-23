@@ -188,7 +188,7 @@ COPY . .
 | `no-cache` | No | `false` | Build without cache. |
 | `cache-mode` | No | `max` | BuildKit cache mode (`min` or `max`). |
 | `cache-tag` | No | slugified image name | Cache tag for BoringCache. |
-| `cli-version` | No | `v1.3.0` | BoringCache CLI version. Set to `skip` to disable installation. |
+| `cli-version` | No | `v1.5.0` | BoringCache CLI version. Set to `skip` to disable installation. |
 | `buildx-version` | No | - | Buildx version to use (e.g., `v0.12.0`, `latest`). |
 | `driver` | No | `docker-container` | Buildx driver. |
 | `driver-opts` | No | - | Driver options (newline-separated). |
