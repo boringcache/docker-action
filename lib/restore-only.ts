@@ -18,7 +18,7 @@ async function run(): Promise<void> {
   try {
     const workspace = getWorkspace(core.getInput('workspace', { required: true }));
     const cacheDir = core.getInput('cache-dir') || CACHE_DIR;
-    const cliVersion = core.getInput('cli-version') || 'v1.5.0';
+    const cliVersion = core.getInput('cli-version');
     const registryTag = core.getInput('registry-tag') || '';
     const proxyNoGit = parseBoolean(core.getInput('proxy-no-git'), false);
     const proxyNoPlatform = parseBoolean(core.getInput('proxy-no-platform'), false);

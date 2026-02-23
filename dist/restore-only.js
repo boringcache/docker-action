@@ -39,7 +39,7 @@ async function run() {
     try {
         const workspace = (0, utils_1.getWorkspace)(core.getInput('workspace', { required: true }));
         const cacheDir = core.getInput('cache-dir') || utils_1.CACHE_DIR;
-        const cliVersion = core.getInput('cli-version') || 'v1.5.0';
+        const cliVersion = core.getInput('cli-version');
         const registryTag = core.getInput('registry-tag') || '';
         const proxyNoGit = (0, utils_1.parseBoolean)(core.getInput('proxy-no-git'), false);
         const proxyNoPlatform = (0, utils_1.parseBoolean)(core.getInput('proxy-no-platform'), false);
